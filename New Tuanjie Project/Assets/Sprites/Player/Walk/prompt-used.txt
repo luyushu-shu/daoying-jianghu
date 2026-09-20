@@ -1,0 +1,4 @@
+2D game animation sprite sheet: exactly 8 equal cells in a 2-row by 4-column grid. Same teal-robed swordsman as idle. Side-view walk cycle facing right with ALTERNATING visible legs; robe hem parts so both boots and lower legs read in every cell. In-place, torso centered, sword at hip trailing back-left. Magenta #FF00FF background.
+
+[后处理] 背景规范化为 #FF00FF；rows=2 cols=4；scale-profile=qingfeng-swordsman；allow-source-edge-touch（第4格轮廓轻触源格，靴子与剑完整）；duration=100ms
+

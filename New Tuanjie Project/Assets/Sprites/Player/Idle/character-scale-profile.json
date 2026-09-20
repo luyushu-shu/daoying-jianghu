@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "name": "qingfeng-swordsman",
+  "processing": {
+    "cell_size": 256,
+    "fit_scale": 0.8,
+    "trim_border": 4,
+    "edge_clean_depth": 3,
+    "align": "feet",
+    "shared_scale": false,
+    "scale_strategy": "preserve",
+    "component_mode": "largest",
+    "component_padding": 0,
+    "min_component_area": 1,
+    "edge_touch_margin": 0
+  },
+  "output_origin": [
+    128.0,
+    231
+  ],
+  "reference": {
+    "target": "player",
+    "mode": "idle",
+    "rows": 2,
+    "cols": 3,
+    "body_scale_mean": 0.41692874330810503,
+    "body_scale_cv": 0.018134758501984666,
+    "anchor_y_mean": 0.8929924242424242
+  },
+  "qc": {
+    "max_body_scale_drift": 0.08
+  }
+}

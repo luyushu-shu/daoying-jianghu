@@ -1,0 +1,25 @@
+2D game animation sprite sheet: exactly 6 equal cells in a 2-row by 3-column grid, no borders, no lines, no frames, no separators between cells.
+
+Use the images just shown as visual references.
+Image 1 is the original 6-pose idle sheet: keep this exact character identity, costume, side-view camera, and standing pose family.
+Image 2 is the exact character identity and art reference: one isolated master frame of the same swordsman.
+Image 3 is a scale-and-root template made from that accepted character. Preserve Image 3's exact cell locations, fixed camera distance, standing-equivalent anatomical scale, body-root position, grounded foot-contact line, and padding. Change only the idle animation pose in each slot. Never zoom or resize a pose to fill its cell. Never reproduce guides, borders, labels, or separators.
+
+CHARACTER IDENTITY locked in every cell: young wuxia swordsman in strict side view facing RIGHT. Long black hair in a high bun with a teal ribbon, hair streaming backward to the left. Teal-cyan long robe with pale cloud embroidery on the hem and sleeve, dark brown inner layer and waist wrap, dark sash, black gloves, dark cloth boots. A long dark jian sword held low at the hip in the near hand, blade trailing back-left and down. Sharp calm profile face. Traditional Chinese ink-wash, clean hand-painted HD, crisp ink outlines, muted watercolor fills. NOT pixel art. Do not redesign the costume, hair, face, or weapon.
+
+POSE locked: same side-view idle stance as the references in every cell. Body upright, looking right, feet planted, sword staying close at the hip trailing backward. Do NOT walk, do NOT turn, do NOT raise the sword, do NOT change facing, do NOT switch to front view.
+
+6-frame IDLE breathing loop, left-to-right then next row, subtle motion only:
+Cell 1 (top-left): rest pose, weight settled.
+Cell 2 (top-middle): slight inhale, chest and shoulders rise a little, hair starts to drift.
+Cell 3 (top-right): breath peak, teal ribbon and hair lift slightly, robe hem and sash sway a little.
+Cell 4 (bottom-left): begin exhale, hair and cloth start to settle.
+Cell 5 (bottom-middle): deeper settle, robe hangs heavier.
+Cell 6 (bottom-right): near-rest, ready to loop back to cell 1.
+
+CONTAINMENT: the entire subject including hair, robe hem, boots, and the full sword must fit fully inside each cell. Body occupies only the central 60% to 70% safe area. Leave solid magenta margin on all four sides. Same silhouette scale in every frame. Same camera distance. Feet on the same bottom contact line. No limbs, hair, cape, or sword may cross a cell edge. No floating detached effects. No ground shadow. No text.
+
+BACKGROUND: 100% solid flat PURE VIVID MAGENTA, exact color #FF00FF = RGB(255,0,255). Bright shocking magenta. No gradients, no white paper, no scene, no floor.
+
+[后处理] 生成图背景约为 #F307F0，经 _fix_bg.py 规范化为纯 #FF00FF 后进入 generate2dsprite 管线。发丝品红溢色做了去溢色。
+[处理参数] rows=2 cols=3 cell=256 fit_scale=0.80 align=feet scale_strategy=preserve component_mode=largest strict-qc duration=160ms max_body_scale_cv=0.08 max_anchor_y_std=0.05
