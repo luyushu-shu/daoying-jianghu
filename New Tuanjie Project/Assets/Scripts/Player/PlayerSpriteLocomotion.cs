@@ -1,14 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// 预览场景：A/D 驱动 Speed，切换待机/行走，并让角色真正横移。
-/// 战斗场景由 CombatActor 写 Speed，本组件只在没有 CombatActor 时自己读输入。
+/// 预览场景：A/D 行走，Shift+A/D 奔跑。战斗场景由 CombatActor 写 Speed。
 /// </summary>
 [RequireComponent(typeof(Animator))]
 [RequireComponent(typeof(SpriteRenderer))]
 public class PlayerSpriteLocomotion : MonoBehaviour
 {
     const float WalkThreshold = 0.1f;
+    const float WalkAnimSpeed = 0.4f;
 
     Animator animator;
     SpriteRenderer spriteRenderer;
@@ -40,14 +40,31 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         float mx = 0f;
         if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) mx -= 1f;
         if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) mx += 1f;
+        bool sprint = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
-        animator.SetFloat("Speed", Mathf.Abs(mx));
+        float animSpeed = 0f;
+        float moveSpeed = QingfengWalkStride.DesignMoveSpeed;
+        if (Mathf.Abs(mx) > WalkThreshold)
+        {
+            if (sprint)
+            {
+                animSpeed = 1f;
+                moveSpeed = QingfengRunStride.DesignMoveSpeed;
+            }
+            else
+            {
+                animSpeed = WalkAnimSpeed;
+                moveSpeed = QingfengWalkStride.DesignMoveSpeed;
+            }
+        }
+
+        animator.SetFloat("Speed", animSpeed);
 
         if (Mathf.Abs(mx) > WalkThreshold)
         {
             spriteRenderer.flipX = mx < 0f;
             Vector3 p = transform.position;
-            p.x += mx * QingfengWalkStride.DesignMoveSpeed * Time.deltaTime;
+            p.x += mx * moveSpeed * Time.deltaTime;
             transform.position = p;
         }
     }

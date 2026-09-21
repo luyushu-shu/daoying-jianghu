@@ -1,9 +1,9 @@
 using UnityEngine;
 
 /// <summary>
-/// 按「实际水平移速 / 设计移速」缩放 Animator 播放速率，
+/// 按「实际水平移速 / 当前动作设计移速」缩放 Animator 播放速率，
 /// 让支撑脚后移速度跟上角色平移，消除打滑/溜冰（Footskate）。
-/// 待机时恢复 1×，避免 Idle 被带着加速。
+/// 行走与奔跑用各自的设计移速；待机时恢复 1×。
 /// </summary>
 [RequireComponent(typeof(Animator))]
 public class CharacterFootskateFix : MonoBehaviour
@@ -12,7 +12,8 @@ public class CharacterFootskateFix : MonoBehaviour
     const float MoveEpsilon = 0.01f;
 
     [Header("设计基准参数")]
-    [SerializeField] float baseMoveSpeed = QingfengWalkStride.DesignMoveSpeed;
+    [SerializeField] float walkMoveSpeed = QingfengWalkStride.DesignMoveSpeed;
+    [SerializeField] float runMoveSpeed = QingfengRunStride.DesignMoveSpeed;
     [SerializeField] float baseAnimSpeed = 1f;
 
     Animator animator;
@@ -24,8 +25,8 @@ public class CharacterFootskateFix : MonoBehaviour
         animator = GetComponent<Animator>();
         combat = GetComponent<CombatActor>();
         lastPos = transform.position;
-        if (baseMoveSpeed < 0.01f)
-            baseMoveSpeed = QingfengWalkStride.DesignMoveSpeed;
+        if (walkMoveSpeed < 0.01f) walkMoveSpeed = QingfengWalkStride.DesignMoveSpeed;
+        if (runMoveSpeed < 0.01f) runMoveSpeed = QingfengRunStride.DesignMoveSpeed;
     }
 
     void LateUpdate()
@@ -42,12 +43,17 @@ public class CharacterFootskateFix : MonoBehaviour
         }
         lastPos = transform.position;
 
-        bool walking = false;
+        float speedParam = 0f;
         if (animator.runtimeAnimatorController != null)
-            walking = animator.GetFloat("Speed") > WalkThreshold;
+            speedParam = animator.GetFloat("Speed");
 
-        if (walking && currentSpeed > MoveEpsilon)
-            animator.speed = (currentSpeed / baseMoveSpeed) * baseAnimSpeed;
+        bool locomoting = speedParam > WalkThreshold;
+        float baseMove = speedParam >= QingfengRunStride.RunAnimThreshold
+            ? runMoveSpeed
+            : walkMoveSpeed;
+
+        if (locomoting && currentSpeed > MoveEpsilon && baseMove > 0.01f)
+            animator.speed = (currentSpeed / baseMove) * baseAnimSpeed;
         else
             animator.speed = baseAnimSpeed;
     }

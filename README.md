@@ -8,12 +8,20 @@
 | 主角 | 青锋剑客 |
 | 工程 | `New Tuanjie Project/` |
 | 设计 | `设计/` |
+| 仓库 | https://github.com/luyushu-shu/daoying-jianghu |
 
 ---
 
 ## 本次进展（青锋剑客精灵）
 
-按青袍侧视设定，用 generate2dsprite 做出可进游戏的待机 / 行走帧，并接到 Animator：`Speed > 0.1` 切行走，松开回到待机。预览场景 `Assets/Scenes/SpritePreview.unity`，战斗原型 `Assets/Scenes/CombatPrototype.unity` 里玩家也会用这套图。Play 后先点 Game 窗口，再按 **A / D**。
+按青袍侧视设定，用 generate2dsprite 做出可进游戏的待机 / 行走 / 奔跑帧，并接到 Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑。预览场景 `Assets/Scenes/SpritePreview.unity`，**A / D** 走，**Shift + A / D** 跑。战斗原型里玩家移动播奔跑。三套动作共用待机 scale profile `qingfeng-swordsman`，身形一致。
+
+行走、奔跑的 8 关键帧按下面两份帧设计表抽帧；实机做了两处可读性修正：行走抬膝低于髋、奔跑前倾约 20°–25°（表内巡航角 8°–12° 在精灵尺寸上不够清楚）。循环必须左右腿交替：行走 K1 近靴在前 / K5 远靴在前，奔跑 R1 近靴在前 / R5 远靴在前。
+
+| 文档 | 说明 |
+|---|---|
+| [行走动作帧设计表](设计/刀影江湖-行走动作帧设计表.md) | 60fps 起版。青锋 36 帧 / 0.60s，抽成 8 关键 |
+| [跑步动作帧设计表](设计/刀影江湖-跑步动作帧设计表.md) | 60fps 起版。青锋 26 帧 / 0.43s，抽成 8 关键 |
 
 参考设定：
 
@@ -34,25 +42,72 @@
 | `New Tuanjie Project/Assets/Sprites/Player/Idle/idle-1.png` … `idle-6.png` | 单帧 |
 | `Idle/sheet-transparent.png` | 透明图集 |
 | `Idle/PlayerIdle.anim` | 循环剪辑 |
-| `Idle/PlayerIdle.controller` | Idle ↔ Walk 状态机 |
+| `Idle/PlayerIdle.controller` | Idle ↔ Walk ↔ Run 状态机 |
 
 ### 行走 · 8 帧（2×4，12 FPS）
 
-Contact / Down / Passing / Up ×2：脚跟先着地，F2/F6 重心下沉，F4/F8 头与支撑最高，袍摆分开露出双靴。
+按 [行走动作帧设计表](设计/刀影江湖-行走动作帧设计表.md) 的青锋 36 帧周期抽 8 关键：Contact / Recoil / Passing / Reach ×2。短步、轻、上身接近直立；实机抬膝约一靴高，避免行军感。K1 近处右靴在前，K5 外侧左靴在前。
 
 ![行走循环](New%20Tuanjie%20Project/Assets/Sprites/Player/Walk/animation.gif)
 
 ![行走图集](New%20Tuanjie%20Project/Assets/Sprites/Player/Walk/sheet-transparent.png)
 
+| 关键帧 | 相位 | 支撑 / 摆动 |
+|---|---|---|
+| K1 | 右脚接触 Contact | 右脚着地，左脚在后将抬 |
+| K2 | 右脚路过 Recoil | 重心上右脚，左脚收至身下 |
+| K3 | 左腿路过 Passing | 左膝抬起（实机低于髋） |
+| K4 | 左脚将落 Reach | 左脚前伸，右腿将换 |
+| K5–K8 | 对偶半周 | 左脚接触起的镜像 |
+
 | 文件 | 说明 |
 |---|---|
 | `Walk/walk-1.png` … `walk-8.png` | 单帧 |
-| `Walk/walk-stride.json` | 支撑脚位移与设计移速（约 2.21 单位/秒） |
+| `Walk/walk-stride.json` | 接触帧靴距约 51px，设计移速约 1.53 单位/秒 |
 | `Walk/PlayerWalk.anim` | 循环剪辑（每帧 83ms） |
 
-行走时世界移速必须和脚步后移匹配，否则会打滑。预览按设计移速平移；战斗里 `CharacterFootskateFix` 按「实际移速 / 设计移速」缩放 Animator。预览地面有刻度线，可对支撑脚。
+行走时世界移速必须和脚步后移匹配，否则会打滑。预览按设计移速平移；战斗里 `CharacterFootskateFix` 按「实际移速 / 当前动作设计移速」缩放 Animator。
 
-菜单 **刀影江湖 → 生成待机与行走帧动画** 会把 png 重新写成剪辑并挂到控制器。
+### 奔跑 · 8 帧（2×4，约 18.5 FPS）
+
+按 [跑步动作帧设计表](设计/刀影江湖-跑步动作帧设计表.md) 的青锋 26 帧 / 0.43s 周期抽 8 关键：Contact / Push-off / Flight / Prep ×2。压剑疾行，双手按鞘，原地跑步机循环。R1 近处三分之四靴在前，R5 外侧暗靴在前；R3 / R7 收对侧膝。
+
+![奔跑循环](New%20Tuanjie%20Project/Assets/Sprites/Player/Run/animation.gif)
+
+![奔跑图集](New%20Tuanjie%20Project/Assets/Sprites/Player/Run/sheet-transparent.png)
+
+| 关键帧 | 相位 | 支撑 / 腾空 |
+|---|---|---|
+| R1 | 右脚接触 Contact | 右脚短接触，近靴在前 |
+| R2 | 右脚蹬离 Push-off | 右将离地 |
+| R3 | 腾空 · 左腿折叠 Flight | 双脚离地，左膝收起 |
+| R4 | 左脚将落 Prep | 远靴前伸将落 |
+| R5 | 左脚接触 | 左短接触，远靴在前（对偶 R1） |
+| R6 | 左脚蹬离 | 对偶 R2 |
+| R7 | 腾空 · 右腿折叠 | 双脚离地，右膝收起（对偶 R3） |
+| R8 | 右脚将落 | 近靴前伸，回到 R1 |
+
+| 文件 | 说明 |
+|---|---|
+| `Run/run-1.png` … `run-8.png` | 单帧 |
+| `Run/run-stride.json` | 接触帧靴距约 72.8px，设计移速约 3.37 单位/秒 |
+| `Run/PlayerRun.anim` | 循环剪辑（每帧 54ms，周期 0.43s） |
+
+菜单 **刀影江湖 → 生成待机行走奔跑帧动画** 会把 png 重新写成剪辑并挂到控制器。
+
+---
+
+## 帧设计表（全文）
+
+60fps 侧面横版、右向为正方向。表内覆盖青锋、三门、杂兵与 Boss 的 Walk / Run 周期；青锋精灵按其中 8 关键落地。
+
+- 行走全文：[设计/刀影江湖-行走动作帧设计表.md](设计/刀影江湖-行走动作帧设计表.md)
+  - 青锋：36 帧、0.60s、短步轻走、Walk 前倾 0–3°
+  - 挂点：K1/K5 脚步，K3/K7 身形最高
+- 跑步全文：[设计/刀影江湖-跑步动作帧设计表.md](设计/刀影江湖-跑步动作帧设计表.md)
+  - 青锋：26 帧、0.43s、中长快步、腾空约 40–45%
+  - 表内巡航前倾 8–12°；急停先立直再滑
+  - 挂点：R1/R5 重脚步，R3/R7 衣袂极值
 
 ---
 
@@ -94,6 +149,8 @@ Contact / Down / Passing / Up ×2：脚跟先着地，F2/F6 重心下沉，F4/F8
 | `设计/刀影江湖-战斗帧数据表-v0.1.md` | 战斗帧 |
 | `设计/刀影江湖-剧情对白旁白全本.md` | 对白旁白 |
 | `设计/刀影江湖-场景镜头描述本.md` | 镜头 |
+| `设计/刀影江湖-行走动作帧设计表.md` | 全角色行走 8 关键 / 周期 |
+| `设计/刀影江湖-跑步动作帧设计表.md` | 全角色奔跑 8 关键 / 前倾 / 周期 |
 
 ---
 
@@ -101,6 +158,6 @@ Contact / Down / Passing / Up ×2：脚跟先着地，F2/F6 重心下沉，F4/F8
 
 - 团结工程：`New Tuanjie Project/`
 - 玩家脚本：`Assets/Scripts/Player/`、`Assets/Scripts/Combat/`
-- 预览输入：`PlayerSpriteLocomotion.cs`（A/D 改 Speed，按设计移速横移）
-- 打滑修正：`CharacterFootskateFix.cs`、`QingfengWalkStride.cs`
+- 预览输入：`PlayerSpriteLocomotion.cs`（A/D 走，Shift+A/D 跑）
+- 打滑修正：`CharacterFootskateFix.cs`、`QingfengWalkStride.cs`、`QingfengRunStride.cs`
 - 战斗里玩家精灵：`CombatActor` 加载 `PlayerIdle.controller`

@@ -5,46 +5,54 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// 把待机 / 行走帧导入为精灵，写成循环 AnimationClip，
-/// 并在现有 PlayerIdle.controller 里用 Speed 衔接 Idle ↔ Walk。
+/// 把待机 / 行走 / 奔跑帧导入为精灵，写成循环 AnimationClip，
+/// 并在 PlayerIdle.controller 里用 Speed 衔接 Idle ↔ Walk ↔ Run。
 /// 批处理：Tuanjie.exe -batchmode -quit -projectPath &lt;proj&gt; -executeMethod SpriteAnimSetup.Setup
 /// </summary>
 public static class SpriteAnimSetup
 {
     const string IdleDir = "Assets/Sprites/Player/Idle";
     const string WalkDir = "Assets/Sprites/Player/Walk";
+    const string RunDir = "Assets/Sprites/Player/Run";
     const string ControllerPath = IdleDir + "/PlayerIdle.controller";
     const string IdleClipPath = IdleDir + "/PlayerIdle.anim";
     const string WalkClipPath = WalkDir + "/PlayerWalk.anim";
+    const string RunClipPath = RunDir + "/PlayerRun.anim";
     const string PreviewScenePath = "Assets/Scenes/SpritePreview.unity";
     static readonly string[] IdleFrames = { "idle-1", "idle-2", "idle-3", "idle-4", "idle-5", "idle-6" };
     static readonly string[] WalkFrames = { "walk-1", "walk-2", "walk-3", "walk-4", "walk-5", "walk-6", "walk-7", "walk-8" };
+    static readonly string[] RunFrames = { "run-1", "run-2", "run-3", "run-4", "run-5", "run-6", "run-7", "run-8" };
     const float IdleFrameSeconds = 0.2f;
     const float WalkFrameSeconds = 0.083f;
+    const float RunFrameSeconds = 0.054f;
+    const float RunSpeedThreshold = 0.55f;
     static readonly Vector2 FeetPivot = new Vector2(0.5f, 0.09f);
 
-    [MenuItem("刀影江湖/生成待机与行走帧动画")]
+    [MenuItem("刀影江湖/生成待机行走奔跑帧动画")]
     public static void Setup()
     {
         Sprite[] idleSprites = ImportFrames(IdleDir, IdleFrames);
         if (idleSprites == null) return;
         Sprite[] walkSprites = ImportFrames(WalkDir, WalkFrames);
         if (walkSprites == null) return;
+        Sprite[] runSprites = ImportFrames(RunDir, RunFrames);
+        if (runSprites == null) return;
 
         AnimationClip idleClip = WriteLoopClip(IdleClipPath, "PlayerIdle", idleSprites, IdleFrameSeconds);
         AnimationClip walkClip = WriteLoopClip(WalkClipPath, "PlayerWalk", walkSprites, WalkFrameSeconds);
+        AnimationClip runClip = WriteLoopClip(RunClipPath, "PlayerRun", runSprites, RunFrameSeconds);
 
         AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
         if (controller == null)
             controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
-        RebuildLocomotionController(controller, idleClip, walkClip);
+        RebuildLocomotionController(controller, idleClip, walkClip, runClip);
         EditorUtility.SetDirty(controller);
 
         BindPreviewCharacter(controller, idleSprites[0]);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[SpriteAnimSetup] 完成：Idle 6 帧 + Walk 6 帧，Speed 衔接 Idle ↔ Walk。预览场景按 A/D 切换。");
+        Debug.Log("[SpriteAnimSetup] 完成：Idle/Walk/Run，Speed 衔接。预览 A/D 走，Shift+A/D 跑。");
     }
 
     static Sprite[] ImportFrames(string dir, string[] names)
@@ -105,7 +113,7 @@ public static class SpriteAnimSetup
         return clip;
     }
 
-    static void RebuildLocomotionController(AnimatorController controller, AnimationClip idle, AnimationClip walk)
+    static void RebuildLocomotionController(AnimatorController controller, AnimationClip idle, AnimationClip walk, AnimationClip run)
     {
         for (int i = controller.parameters.Length - 1; i >= 0; i--)
             controller.RemoveParameter(i);
@@ -120,19 +128,25 @@ public static class SpriteAnimSetup
         idleState.motion = idle;
         AnimatorState walkState = sm.AddState("Walk", new Vector3(480f, 0f, 0f));
         walkState.motion = walk;
+        AnimatorState runState = sm.AddState("Run", new Vector3(760f, 0f, 0f));
+        runState.motion = run;
         sm.defaultState = idleState;
 
-        AnimatorStateTransition toWalk = idleState.AddTransition(walkState);
-        toWalk.hasExitTime = false;
-        toWalk.hasFixedDuration = true;
-        toWalk.duration = 0f;
-        toWalk.AddCondition(AnimatorConditionMode.Greater, 0.1f, "Speed");
+        AddSpeedTransition(idleState, walkState, AnimatorConditionMode.Greater, 0.1f);
+        AddSpeedTransition(idleState, runState, AnimatorConditionMode.Greater, RunSpeedThreshold);
+        AddSpeedTransition(walkState, runState, AnimatorConditionMode.Greater, RunSpeedThreshold);
+        AddSpeedTransition(walkState, idleState, AnimatorConditionMode.Less, 0.1f);
+        AddSpeedTransition(runState, walkState, AnimatorConditionMode.Less, RunSpeedThreshold);
+        AddSpeedTransition(runState, idleState, AnimatorConditionMode.Less, 0.1f);
+    }
 
-        AnimatorStateTransition toIdle = walkState.AddTransition(idleState);
-        toIdle.hasExitTime = false;
-        toIdle.hasFixedDuration = true;
-        toIdle.duration = 0f;
-        toIdle.AddCondition(AnimatorConditionMode.Less, 0.1f, "Speed");
+    static void AddSpeedTransition(AnimatorState from, AnimatorState to, AnimatorConditionMode mode, float threshold)
+    {
+        AnimatorStateTransition t = from.AddTransition(to);
+        t.hasExitTime = false;
+        t.hasFixedDuration = true;
+        t.duration = 0f;
+        t.AddCondition(mode, threshold, "Speed");
     }
 
     static void BindPreviewCharacter(AnimatorController controller, Sprite idleSprite)

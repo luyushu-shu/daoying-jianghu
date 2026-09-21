@@ -1,4 +1,3 @@
-8-frame textbook walk cycle (Contact/Down/Passing/Up ×2) for the teal-robed Qingfeng swordsman, side view facing right. Head bob F2/F6 low F4/F8 high. Heel-first contact, toe-off on up frames. Near right leg brighter, far left leg darker. Robe parts to show both boots. Treadmill in-place, magenta #FF00FF, 2x4 grid.
+﻿Qingfeng 8-key walk: short upright stroll, low passing (boot ~one boot-height off ground), K1/K5 opposite contact feet, K3/K7 opposite low swings. Same body size as idle. Magenta 2x4.
 
-[后处理] 背景规范化为 #FF00FF；rows=2 cols=4；scale-profile=qingfeng-swordsman；allow-source-edge-touch（F4/F8 迈步格轮廓轻触，靴子与剑完整）；duration=83ms（12 FPS）
-
+[后处理] 背景规范化为 #FF00FF；rows=2 cols=4；scale-profile=qingfeng-swordsman；duration=75ms（8 keys / 0.60s）

@@ -6,7 +6,7 @@ using UnityEngine;
 /// <summary>
 /// 一次性自执行器：检测到 Assets/_run_sprite_setup.marker 存在时，
 /// 在当前打开的编辑器里自动调用 SpriteAnimSetup.Setup()，并写出结果标记文件。
-/// rev: 6 8帧接触下沉经过最高点
+/// rev: 9 奔跑重画：前倾 25°，双腿大步交替
 /// </summary>
 [InitializeOnLoad]
 public static class AutoRunSpriteSetup
