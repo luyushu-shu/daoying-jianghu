@@ -1,0 +1,9 @@
+{
+  "fps": 12,
+  "pixelsPerUnit": 100,
+  "framesPerStep": 4,
+  "plantedFootXPx": [173.4, 157.0, 136.2, 99.0, 166.6, 162.2, 158.6, 93.7],
+  "stepDistancePixels": 73.65,
+  "designMoveSpeed": 2.2095,
+  "notes": "支撑脚相对 256px 画布轴心(x=128) 的接触点。F1-F4 / F5-F8 两段后移量取平均得到设计移速。程序端必须让世界移速与 Animator.speed 同比缩放。"
+}

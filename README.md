@@ -36,9 +36,9 @@
 | `Idle/PlayerIdle.anim` | 循环剪辑 |
 | `Idle/PlayerIdle.controller` | Idle ↔ Walk 状态机 |
 
-### 行走 · 8 帧（2×4）
+### 行走 · 8 帧（2×4，12 FPS）
 
-第一版 6 帧长袍挡住腿，看起来像滑步。重画为 8 帧：袍摆分开，左右脚交替落地 / 迈出。
+Contact / Down / Passing / Up ×2：脚跟先着地，F2/F6 重心下沉，F4/F8 头与支撑最高，袍摆分开露出双靴。
 
 ![行走循环](New%20Tuanjie%20Project/Assets/Sprites/Player/Walk/animation.gif)
 
@@ -47,7 +47,10 @@
 | 文件 | 说明 |
 |---|---|
 | `Walk/walk-1.png` … `walk-8.png` | 单帧 |
-| `Walk/PlayerWalk.anim` | 循环剪辑 |
+| `Walk/walk-stride.json` | 支撑脚位移与设计移速（约 2.21 单位/秒） |
+| `Walk/PlayerWalk.anim` | 循环剪辑（每帧 83ms） |
+
+行走时世界移速必须和脚步后移匹配，否则会打滑。预览按设计移速平移；战斗里 `CharacterFootskateFix` 按「实际移速 / 设计移速」缩放 Animator。预览地面有刻度线，可对支撑脚。
 
 菜单 **刀影江湖 → 生成待机与行走帧动画** 会把 png 重新写成剪辑并挂到控制器。
 
@@ -98,5 +101,6 @@
 
 - 团结工程：`New Tuanjie Project/`
 - 玩家脚本：`Assets/Scripts/Player/`、`Assets/Scripts/Combat/`
-- 预览输入：`PlayerSpriteLocomotion.cs`（A/D 改 Speed 并横移）
+- 预览输入：`PlayerSpriteLocomotion.cs`（A/D 改 Speed，按设计移速横移）
+- 打滑修正：`CharacterFootskateFix.cs`、`QingfengWalkStride.cs`
 - 战斗里玩家精灵：`CombatActor` 加载 `PlayerIdle.controller`

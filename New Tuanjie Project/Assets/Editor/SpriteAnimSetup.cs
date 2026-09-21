@@ -20,7 +20,7 @@ public static class SpriteAnimSetup
     static readonly string[] IdleFrames = { "idle-1", "idle-2", "idle-3", "idle-4", "idle-5", "idle-6" };
     static readonly string[] WalkFrames = { "walk-1", "walk-2", "walk-3", "walk-4", "walk-5", "walk-6", "walk-7", "walk-8" };
     const float IdleFrameSeconds = 0.2f;
-    const float WalkFrameSeconds = 0.1f;
+    const float WalkFrameSeconds = 0.083f;
     static readonly Vector2 FeetPivot = new Vector2(0.5f, 0.09f);
 
     [MenuItem("刀影江湖/生成待机与行走帧动画")]
@@ -157,6 +157,9 @@ public static class SpriteAnimSetup
         animator.runtimeAnimatorController = controller;
         if (go.GetComponent<PlayerSpriteLocomotion>() == null)
             go.AddComponent<PlayerSpriteLocomotion>();
+        if (go.GetComponent<CharacterFootskateFix>() == null)
+            go.AddComponent<CharacterFootskateFix>();
+        FootskateDebugGrid.SpawnIfMissing();
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene, PreviewScenePath);

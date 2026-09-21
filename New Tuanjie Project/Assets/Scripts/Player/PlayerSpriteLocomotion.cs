@@ -9,7 +9,6 @@ using UnityEngine;
 public class PlayerSpriteLocomotion : MonoBehaviour
 {
     const float WalkThreshold = 0.1f;
-    const float PreviewMoveSpeed = 2.4f;
 
     Animator animator;
     SpriteRenderer spriteRenderer;
@@ -22,6 +21,9 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         if (go == null) return;
         if (go.GetComponent<PlayerSpriteLocomotion>() == null)
             go.AddComponent<PlayerSpriteLocomotion>();
+        if (go.GetComponent<CharacterFootskateFix>() == null)
+            go.AddComponent<CharacterFootskateFix>();
+        FootskateDebugGrid.SpawnIfMissing();
     }
 
     void Awake()
@@ -45,7 +47,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         {
             spriteRenderer.flipX = mx < 0f;
             Vector3 p = transform.position;
-            p.x += mx * PreviewMoveSpeed * Time.deltaTime;
+            p.x += mx * QingfengWalkStride.DesignMoveSpeed * Time.deltaTime;
             transform.position = p;
         }
     }

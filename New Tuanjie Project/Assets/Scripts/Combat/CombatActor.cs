@@ -157,6 +157,8 @@ public class CombatActor : MonoBehaviour
         playerSr.sortingOrder = 8;
         playerAnim = gameObject.AddComponent<Animator>();
         playerAnim.runtimeAnimatorController = ctrl;
+        if (GetComponent<CharacterFootskateFix>() == null)
+            gameObject.AddComponent<CharacterFootskateFix>();
         return true;
     }
 
