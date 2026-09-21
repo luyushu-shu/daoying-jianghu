@@ -1,3 +1,2 @@
-﻿Qingfeng 8-key walk: short upright stroll, low passing (boot ~one boot-height off ground), K1/K5 opposite contact feet, K3/K7 opposite low swings. Same body size as idle. Magenta 2x4.
-
-[后处理] 背景规范化为 #FF00FF；rows=2 cols=4；scale-profile=qingfeng-swordsman；duration=75ms（8 keys / 0.60s）
+﻿用户提供的 15 帧行走（WeChat frames：frame_001.png–frame_015.png，每帧 140ms，周期 2.1s）。
+未重画。按待机 scale profile qingfeng-swordsman 缩到 256、脚底对齐；品红底去脚下浅色投影后切帧。

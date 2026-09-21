@@ -25,8 +25,8 @@ public class CharacterFootskateFix : MonoBehaviour
         animator = GetComponent<Animator>();
         combat = GetComponent<CombatActor>();
         lastPos = transform.position;
-        if (walkMoveSpeed < 0.01f) walkMoveSpeed = QingfengWalkStride.DesignMoveSpeed;
-        if (runMoveSpeed < 0.01f) runMoveSpeed = QingfengRunStride.DesignMoveSpeed;
+        walkMoveSpeed = QingfengWalkStride.DesignMoveSpeed;
+        runMoveSpeed = QingfengRunStride.DesignMoveSpeed;
     }
 
     void LateUpdate()

@@ -20,10 +20,15 @@ public static class SpriteAnimSetup
     const string RunClipPath = RunDir + "/PlayerRun.anim";
     const string PreviewScenePath = "Assets/Scenes/SpritePreview.unity";
     static readonly string[] IdleFrames = { "idle-1", "idle-2", "idle-3", "idle-4", "idle-5", "idle-6" };
-    static readonly string[] WalkFrames = { "walk-1", "walk-2", "walk-3", "walk-4", "walk-5", "walk-6", "walk-7", "walk-8" };
+    static readonly string[] WalkFrames =
+    {
+        "walk-1", "walk-2", "walk-3", "walk-4", "walk-5",
+        "walk-6", "walk-7", "walk-8", "walk-9", "walk-10",
+        "walk-11", "walk-12", "walk-13", "walk-14", "walk-15"
+    };
     static readonly string[] RunFrames = { "run-1", "run-2", "run-3", "run-4", "run-5", "run-6", "run-7", "run-8" };
     const float IdleFrameSeconds = 0.2f;
-    const float WalkFrameSeconds = 0.083f;
+    const float WalkFrameSeconds = 0.14f;
     const float RunFrameSeconds = 0.054f;
     const float RunSpeedThreshold = 0.55f;
     static readonly Vector2 FeetPivot = new Vector2(0.5f, 0.09f);

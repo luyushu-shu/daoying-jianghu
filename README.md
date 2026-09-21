@@ -16,7 +16,7 @@
 
 按青袍侧视设定，用 generate2dsprite 做出可进游戏的待机 / 行走 / 奔跑帧，并接到 Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑。预览场景 `Assets/Scenes/SpritePreview.unity`，**A / D** 走，**Shift + A / D** 跑。战斗原型里玩家移动播奔跑。三套动作共用待机 scale profile `qingfeng-swordsman`，身形一致。
 
-行走、奔跑的 8 关键帧按下面两份帧设计表抽帧；实机做了两处可读性修正：行走抬膝低于髋、奔跑前倾约 20°–25°（表内巡航角 8°–12° 在精灵尺寸上不够清楚）。循环必须左右腿交替：行走 K1 近靴在前 / K5 远靴在前，奔跑 R1 近靴在前 / R5 远靴在前。
+行走当前进游戏的是用户提供的 15 帧循环（每帧 140ms，周期 2.1s），按待机尺度缩放后替换原 8 关键。奔跑仍按帧设计表抽 8 关键；前倾约 20°–25°（表内巡航角 8°–12° 在精灵尺寸上不够清楚）。奔跑循环必须左右腿交替：R1 近靴在前 / R5 远靴在前。
 
 | 文档 | 说明 |
 |---|---|
@@ -44,27 +44,19 @@
 | `Idle/PlayerIdle.anim` | 循环剪辑 |
 | `Idle/PlayerIdle.controller` | Idle ↔ Walk ↔ Run 状态机 |
 
-### 行走 · 8 帧（2×4，12 FPS）
+### 行走 · 15 帧（3×5，每帧 140ms）
 
-按 [行走动作帧设计表](设计/刀影江湖-行走动作帧设计表.md) 的青锋 36 帧周期抽 8 关键：Contact / Recoil / Passing / Reach ×2。短步、轻、上身接近直立；实机抬膝约一靴高，避免行军感。K1 近处右靴在前，K5 外侧左靴在前。
+用户提供的 15 帧侧视行走，未重画。按待机 scale profile 缩到 256、脚底对齐，去掉原图脚下浅色投影。周期 2.1s；接触帧靴距约 43px，两步一个循环。
 
 ![行走循环](New%20Tuanjie%20Project/Assets/Sprites/Player/Walk/animation.gif)
 
 ![行走图集](New%20Tuanjie%20Project/Assets/Sprites/Player/Walk/sheet-transparent.png)
 
-| 关键帧 | 相位 | 支撑 / 摆动 |
-|---|---|---|
-| K1 | 右脚接触 Contact | 右脚着地，左脚在后将抬 |
-| K2 | 右脚路过 Recoil | 重心上右脚，左脚收至身下 |
-| K3 | 左腿路过 Passing | 左膝抬起（实机低于髋） |
-| K4 | 左脚将落 Reach | 左脚前伸，右腿将换 |
-| K5–K8 | 对偶半周 | 左脚接触起的镜像 |
-
 | 文件 | 说明 |
 |---|---|
-| `Walk/walk-1.png` … `walk-8.png` | 单帧 |
-| `Walk/walk-stride.json` | 接触帧靴距约 51px，设计移速约 1.53 单位/秒 |
-| `Walk/PlayerWalk.anim` | 循环剪辑（每帧 83ms） |
+| `Walk/walk-1.png` … `walk-15.png` | 单帧 |
+| `Walk/walk-stride.json` | 接触帧靴距约 42.8px，设计移速约 0.407 单位/秒 |
+| `Walk/PlayerWalk.anim` | 循环剪辑（每帧 140ms） |
 
 行走时世界移速必须和脚步后移匹配，否则会打滑。预览按设计移速平移；战斗里 `CharacterFootskateFix` 按「实际移速 / 当前动作设计移速」缩放 Animator。
 
