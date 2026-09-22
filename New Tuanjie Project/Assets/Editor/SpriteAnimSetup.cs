@@ -15,11 +15,15 @@ public static class SpriteAnimSetup
     const string WalkDir = "Assets/Sprites/Player/Walk";
     const string RunDir = "Assets/Sprites/Player/Run";
     const string DodgeDir = "Assets/Sprites/Player/Dodge";
+    const string AttackDir = "Assets/Sprites/Player/Attack";
     const string ControllerPath = IdleDir + "/PlayerIdle.controller";
     const string IdleClipPath = IdleDir + "/PlayerIdle.anim";
     const string WalkClipPath = WalkDir + "/PlayerWalk.anim";
     const string RunClipPath = RunDir + "/PlayerRun.anim";
     const string DodgeClipPath = DodgeDir + "/PlayerDodge.anim";
+    const string Attack1ClipPath = AttackDir + "/PlayerAttack1.anim";
+    const string Attack2ClipPath = AttackDir + "/PlayerAttack2.anim";
+    const string Attack3ClipPath = AttackDir + "/PlayerAttack3.anim";
     const string PreviewScenePath = "Assets/Scenes/SpritePreview.unity";
     static readonly string[] IdleFrames =
     {
@@ -42,14 +46,27 @@ public static class SpriteAnimSetup
         "dodge-1", "dodge-2", "dodge-3", "dodge-4",
         "dodge-5", "dodge-6", "dodge-7", "dodge-8"
     };
+    static readonly string[] Attack1Frames =
+    {
+        "attack-1", "attack-2", "attack-3", "attack-4"
+    };
+    static readonly string[] Attack2Frames =
+    {
+        "attack-5", "attack-6", "attack-7", "attack-8"
+    };
+    static readonly string[] Attack3Frames =
+    {
+        "attack-9", "attack-10", "attack-11", "attack-12"
+    };
     const float IdleFrameSeconds = 0.16f;
     const float WalkFrameSeconds = 0.14f;
     const float RunFrameSeconds = QingfengRunStride.FrameSeconds;
     const float DodgeFrameSeconds = 0.075f;
+    const float AttackFrameSeconds = 0.085f;
     const float RunSpeedThreshold = 0.55f;
     static readonly Vector2 FeetPivot = new Vector2(0.5f, 0.09f);
 
-    [MenuItem("刀影江湖/生成待机行走奔跑闪避帧动画")]
+    [MenuItem("刀影江湖/生成待机行走奔跑闪避攻击帧动画")]
     public static void Setup()
     {
         Sprite[] idleSprites = ImportFrames(IdleDir, IdleFrames, 214f);
@@ -60,23 +77,32 @@ public static class SpriteAnimSetup
         if (runSprites == null) return;
         Sprite[] dodgeSprites = ImportFrames(DodgeDir, DodgeFrames, 214f);
         if (dodgeSprites == null) return;
+        Sprite[] atk1Sprites = ImportFrames(AttackDir, Attack1Frames, 214f);
+        if (atk1Sprites == null) return;
+        Sprite[] atk2Sprites = ImportFrames(AttackDir, Attack2Frames, 214f);
+        if (atk2Sprites == null) return;
+        Sprite[] atk3Sprites = ImportFrames(AttackDir, Attack3Frames, 214f);
+        if (atk3Sprites == null) return;
 
         AnimationClip idleClip = WriteClip(IdleClipPath, "PlayerIdle", idleSprites, IdleFrameSeconds, true);
         AnimationClip walkClip = WriteClip(WalkClipPath, "PlayerWalk", walkSprites, WalkFrameSeconds, true);
         AnimationClip runClip = WriteClip(RunClipPath, "PlayerRun", runSprites, RunFrameSeconds, true);
         AnimationClip dodgeClip = WriteClip(DodgeClipPath, "PlayerDodge", dodgeSprites, DodgeFrameSeconds, false);
+        AnimationClip atk1Clip = WriteClip(Attack1ClipPath, "PlayerAttack1", atk1Sprites, AttackFrameSeconds, false);
+        AnimationClip atk2Clip = WriteClip(Attack2ClipPath, "PlayerAttack2", atk2Sprites, AttackFrameSeconds, false);
+        AnimationClip atk3Clip = WriteClip(Attack3ClipPath, "PlayerAttack3", atk3Sprites, AttackFrameSeconds, false);
 
         AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
         if (controller == null)
             controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
-        RebuildLocomotionController(controller, idleClip, walkClip, runClip, dodgeClip);
+        RebuildLocomotionController(controller, idleClip, walkClip, runClip, dodgeClip, atk1Clip, atk2Clip, atk3Clip);
         EditorUtility.SetDirty(controller);
 
         BindPreviewCharacter(controller, idleSprites[0]);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[SpriteAnimSetup] 完成：Idle/Walk/Run/Dodge，Speed/Dodge 衔接。预览 A/D 走，Shift+A/D 跑，Space 闪避。");
+        Debug.Log("[SpriteAnimSetup] 完成：Idle/Walk/Run/Dodge/Attack1/Attack2/Attack3。预览 A/D 走，Shift+A/D 跑，Space 闪避，J 三连斩。");
     }
 
     static Sprite[] ImportFrames(string dir, string[] names, float pixelsPerUnit)
@@ -143,12 +169,15 @@ public static class SpriteAnimSetup
         return clip;
     }
 
-    static void RebuildLocomotionController(AnimatorController controller, AnimationClip idle, AnimationClip walk, AnimationClip run, AnimationClip dodge)
+    static void RebuildLocomotionController(AnimatorController controller, AnimationClip idle, AnimationClip walk, AnimationClip run, AnimationClip dodge, AnimationClip atk1, AnimationClip atk2, AnimationClip atk3)
     {
         for (int i = controller.parameters.Length - 1; i >= 0; i--)
             controller.RemoveParameter(i);
         controller.AddParameter("Speed", AnimatorControllerParameterType.Float);
         controller.AddParameter("Dodge", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("Attack1", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("Attack2", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("Attack3", AnimatorControllerParameterType.Trigger);
 
         AnimatorStateMachine sm = controller.layers[0].stateMachine;
         ChildAnimatorState[] existing = sm.states;
@@ -163,6 +192,14 @@ public static class SpriteAnimSetup
         runState.motion = run;
         AnimatorState dodgeState = sm.AddState("Dodge", new Vector3(480f, -120f, 0f));
         dodgeState.motion = dodge;
+
+        AnimatorState atk1State = sm.AddState("Attack1", new Vector3(200f, 140f, 0f));
+        atk1State.motion = atk1;
+        AnimatorState atk2State = sm.AddState("Attack2", new Vector3(480f, 140f, 0f));
+        atk2State.motion = atk2;
+        AnimatorState atk3State = sm.AddState("Attack3", new Vector3(760f, 140f, 0f));
+        atk3State.motion = atk3;
+
         sm.defaultState = idleState;
 
         AddSpeedTransition(idleState, walkState, AnimatorConditionMode.Greater, 0.1f);
@@ -179,12 +216,54 @@ public static class SpriteAnimSetup
         toDodge.duration = 0.02f;
         toDodge.AddCondition(AnimatorConditionMode.If, 0f, "Dodge");
 
+        // AnyState -> Attack1
+        AnimatorStateTransition toAtk1 = sm.AddAnyStateTransition(atk1State);
+        toAtk1.hasExitTime = false;
+        toAtk1.hasFixedDuration = true;
+        toAtk1.duration = 0.02f;
+        toAtk1.AddCondition(AnimatorConditionMode.If, 0f, "Attack1");
+
+        // AnyState -> Attack2
+        AnimatorStateTransition toAtk2 = sm.AddAnyStateTransition(atk2State);
+        toAtk2.hasExitTime = false;
+        toAtk2.hasFixedDuration = true;
+        toAtk2.duration = 0.02f;
+        toAtk2.AddCondition(AnimatorConditionMode.If, 0f, "Attack2");
+
+        // AnyState -> Attack3
+        AnimatorStateTransition toAtk3 = sm.AddAnyStateTransition(atk3State);
+        toAtk3.hasExitTime = false;
+        toAtk3.hasFixedDuration = true;
+        toAtk3.duration = 0.02f;
+        toAtk3.AddCondition(AnimatorConditionMode.If, 0f, "Attack3");
+
         // Dodge -> Idle
         AnimatorStateTransition fromDodge = dodgeState.AddTransition(idleState);
         fromDodge.hasExitTime = true;
         fromDodge.exitTime = 0.95f;
         fromDodge.hasFixedDuration = true;
         fromDodge.duration = 0.05f;
+
+        // Attack1 -> Idle
+        AnimatorStateTransition fromAtk1 = atk1State.AddTransition(idleState);
+        fromAtk1.hasExitTime = true;
+        fromAtk1.exitTime = 0.92f;
+        fromAtk1.hasFixedDuration = true;
+        fromAtk1.duration = 0.05f;
+
+        // Attack2 -> Idle
+        AnimatorStateTransition fromAtk2 = atk2State.AddTransition(idleState);
+        fromAtk2.hasExitTime = true;
+        fromAtk2.exitTime = 0.92f;
+        fromAtk2.hasFixedDuration = true;
+        fromAtk2.duration = 0.05f;
+
+        // Attack3 -> Idle
+        AnimatorStateTransition fromAtk3 = atk3State.AddTransition(idleState);
+        fromAtk3.hasExitTime = true;
+        fromAtk3.exitTime = 0.92f;
+        fromAtk3.hasFixedDuration = true;
+        fromAtk3.duration = 0.05f;
     }
 
     static void AddSpeedTransition(AnimatorState from, AnimatorState to, AnimatorConditionMode mode, float threshold)
@@ -198,6 +277,17 @@ public static class SpriteAnimSetup
 
     static void BindPreviewCharacter(AnimatorController controller, Sprite idleSprite)
     {
+        if (EditorApplication.isPlaying)
+        {
+            GameObject liveGo = GameObject.Find("QingfengIdle");
+            if (liveGo != null)
+            {
+                Animator anim = liveGo.GetComponent<Animator>();
+                if (anim != null) anim.runtimeAnimatorController = controller;
+            }
+            return;
+        }
+
         Scene scene;
         if (System.IO.File.Exists(PreviewScenePath))
             scene = EditorSceneManager.OpenScene(PreviewScenePath, OpenSceneMode.Single);

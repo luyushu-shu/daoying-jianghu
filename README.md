@@ -12,11 +12,11 @@
 
 ---
 
-## 本次进展（青锋剑客精灵与闪避动作）
+## 本次进展（青锋剑客动作系统：待机 / 行走 / 奔跑 / 闪避 / 轻攻击三连斩）
 
-待机和奔跑来自六秒循环视频的去背帧：待机取 01–08，奔跑取能接回的 15–23。行走仍是用户提供的 15 帧。闪避动作共 8 帧侧身短闪，前倾起段并带短滑步。三套外袍按行走的青绿对齐饱和度。轴心用自定义脚底（`spritePivot.y = 0.09`），避免画布中心把行走整体拉低。
+待机和奔跑来自六秒循环视频的去背帧：待机取 01–08，奔跑取能接回的 15–23。行走仍是用户提供的 15 帧。闪避动作共 8 帧侧身短闪，前倾起段并带短滑步。轻攻击三连斩共 12 帧（平斩、挑刺、回旋力劈），由 `generate2dsprite` 工作流高质量生成并完成自适应无损切割与洋红色彩溢消除（Despill）。轴心统一使用自定义脚底（`spritePivot.y = 0.09`），各动作 PPU 均已对齐。
 
-Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑，`Dodge` Trigger 触发闪避。预览场景 `Assets/Scenes/SpritePreview.unity`，**A / D** 走，**Shift + A / D** 跑，**Space** 闪避（可配合 A/D 指定方向）。待机 / 奔跑 / 闪避 PPU 为 214，行走 PPU 为 100，世界身高对齐。闪避位移调校为前冲略微位移一小段（约 0.45 单位），位移在前半段（前 0.20s / 2~7帧）完成，后半段稳定着地收招。
+Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑，`Dodge` Trigger 触发闪避，`Attack1/2/3` Trigger 触发轻击三连斩。预览场景 `Assets/Scenes/SpritePreview.unity`，**A / D** 走，**Shift + A / D** 跑，**Space** 闪避（可配合 A/D 指定方向），**J / 鼠标左键** 连斩，攻击动作期间支持 **Space** 闪避打断取消。
 
 帧序列图：
 
@@ -26,6 +26,7 @@ Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑，`Dodge` Trigger 
 | 行走 15 帧 | [设计/青锋帧序列/walk-sequence.png](设计/青锋帧序列/walk-sequence.png) |
 | 奔跑 9 帧 | [设计/青锋帧序列/run-sequence.png](设计/青锋帧序列/run-sequence.png) |
 | 闪避 8 帧 | [设计/青锋帧序列/dodge-sequence.png](设计/青锋帧序列/dodge-sequence.png) |
+| 轻攻击三连斩 12 帧 | [设计/青锋帧序列/attack-sequence.png](设计/青锋帧序列/attack-sequence.png) |
 
 | 文档 | 说明 |
 |---|---|
@@ -107,7 +108,36 @@ Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑，`Dodge` Trigger 
 | `Dodge/PlayerDodge.anim` | 单次剪辑（每帧 75ms，总长 0.60s） |
 | `Dodge/sheet-transparent.png` | 透明精灵图集 |
 
-菜单 **刀影江湖 → 生成待机行走奔跑闪避帧动画** 会把 png 重新写成剪辑并挂到控制器。
+### 轻攻击三连斩 · 12 帧（三段连斩，每段 4 帧，每帧 85ms）
+
+由 `generate2dsprite` 工作流高质量生成，分为流畅递进的三段刀剑武学招式。经自适应投影切割算法与洋红色彩溢消除（Despill）处理，保证伸展前挑时剑尖 100% 完整无截断，且人物轮廓 0 洋红杂边。
+
+- **一段 · 拔剑平斩**（`attack-1` ~ `attack-4`）：起剑斜上挑起，带 0.15 单位踏步前压；
+- **二段 · 顺势突刺**（`attack-5` ~ `attack-8`）：剑锋平直破风前突，带 0.20 单位疾进位移；
+- **三段 · 旋身下劈**（`attack-9` ~ `attack-12`）：沉身提剑力劈华山，带 0.25 单位重力踏步压制。
+
+![轻击三连斩帧序列](设计/青锋帧序列/attack-sequence.png)
+
+![三连斩循环动图](New%20Tuanjie%20Project/Assets/Sprites/Player/Attack/animation.gif)
+
+三段独立剪辑预览：
+
+| 一段 · 拔剑平斩 | 二段 · 顺势突刺 | 三段 · 旋身下劈 |
+|:---:|:---:|:---:|
+| ![一段](New%20Tuanjie%20Project/Assets/Sprites/Player/Attack/attack-hit1.gif) | ![二段](New%20Tuanjie%20Project/Assets/Sprites/Player/Attack/attack-hit2.gif) | ![三段](New%20Tuanjie%20Project/Assets/Sprites/Player/Attack/attack-hit3.gif) |
+
+![轻击透明图集](New%20Tuanjie%20Project/Assets/Sprites/Player/Attack/sheet-transparent.png)
+
+| 文件 | 说明 |
+|---|---|
+| `Attack/attack-1.png` … `attack-12.png` | 12 帧单帧，PPU 214，剑尖完整无截断，0 洋红紫晕 |
+| `设计/青锋帧序列/attack-sequence.png` | 12 帧横向长序列图 |
+| `Attack/animation.gif` | 三连斩完整循环动图 |
+| `Attack/attack-hit1.gif` ~ `hit3.gif` | 各分段连招动图 |
+| `Attack/sheet-transparent.png` | 3×4 矩阵透明精灵图集 |
+| `Attack/PlayerAttack1.anim` ~ `Attack3.anim` | 团结引擎单次动画剪辑（每帧 85ms） |
+
+菜单 **刀影江湖 → 生成待机行走奔跑闪避攻击帧动画** 会自动将贴图设置为精灵、写成动画剪辑、挂载到 `PlayerIdle.controller` 状态机并与预览角色绑定。
 
 ---
 
@@ -173,6 +203,6 @@ Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑，`Dodge` Trigger 
 
 - 团结工程：`New Tuanjie Project/`
 - 玩家脚本：`Assets/Scripts/Player/`、`Assets/Scripts/Combat/`
-- 预览输入：`PlayerSpriteLocomotion.cs`（A/D 走，Shift+A/D 跑，Space 闪避）
+- 预览输入：`PlayerSpriteLocomotion.cs`（A/D 走，Shift+A/D 跑，Space 闪避，J / 鼠标左键 三连斩，支持 Space 闪避取消攻击）
 - 打滑修正：`CharacterFootskateFix.cs`、`QingfengWalkStride.cs`、`QingfengRunStride.cs`
 - 战斗里玩家精灵：`CombatActor` 加载 `PlayerIdle.controller`

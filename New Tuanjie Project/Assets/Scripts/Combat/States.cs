@@ -207,6 +207,12 @@ public class AttackState : ActorState
         base.Enter();
         actor.chi -= Move.chi;
 
+        // 触发攻击动画（轻击三连斩）
+        if (Move.id == "A_L1") actor.TriggerAnim("Attack1");
+        else if (Move.id == "A_L2") actor.TriggerAnim("Attack2");
+        else if (Move.id == "A_L3") actor.TriggerAnim("Attack3");
+        else actor.TriggerAnim("Attack1");
+
         // 剑意绽放：该击后摇-4f
         int bloomBonus = (actor.isPlayer && actor.bloomArmed) ? 4 : 0;
         totalFrames = Move.Total - bloomBonus;
