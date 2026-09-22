@@ -9,10 +9,15 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 {
     const float WalkThreshold = 0.1f;
     const float WalkAnimSpeed = 0.4f;
+    const float DodgeDuration = 0.60f;
+    const float DodgeDistance = 0.45f;
+    const float DodgeMoveDuration = 0.20f;
 
     Animator animator;
     SpriteRenderer spriteRenderer;
     CombatActor combat;
+    float dodgeTimer = 0f;
+    float dodgeDir = 1f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void AutoAttachInPreview()
@@ -36,6 +41,38 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     void Update()
     {
         if (combat != null) return;
+
+        // 闪避状态位移（略微前移一小段，前半段冲刺位移，后半段着地收招）
+        if (dodgeTimer > 0f)
+        {
+            float prevTimer = dodgeTimer;
+            dodgeTimer -= Time.deltaTime;
+            if (dodgeTimer < 0f) dodgeTimer = 0f;
+
+            float elapsed = DodgeDuration - prevTimer;
+            if (elapsed < DodgeMoveDuration)
+            {
+                float moveDt = Mathf.Min(Time.deltaTime, DodgeMoveDuration - elapsed);
+                float speed = DodgeDistance / DodgeMoveDuration;
+                Vector3 dp = transform.position;
+                dp.x += dodgeDir * speed * moveDt;
+                transform.position = dp;
+            }
+            return;
+        }
+
+        // 触发闪避 (Space)
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            dodgeDir = spriteRenderer.flipX ? -1f : 1f;
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) dodgeDir = -1f;
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) dodgeDir = 1f;
+            spriteRenderer.flipX = dodgeDir < 0f;
+
+            dodgeTimer = DodgeDuration;
+            animator.SetTrigger("Dodge");
+            return;
+        }
 
         float mx = 0f;
         if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) mx -= 1f;

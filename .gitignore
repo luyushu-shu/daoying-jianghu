@@ -64,6 +64,11 @@ New Tuanjie Project/Assets/_sprite_setup_done.txt.meta
 
 # Local helper dump
 _names_utf8.txt
+_tmp_frames/
+设计/动作帧/
+.agents/
+__pycache__/
+*.pyc
 
 # OS
 Thumbs.db

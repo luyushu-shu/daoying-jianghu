@@ -12,11 +12,11 @@
 
 ---
 
-## 本次进展（青锋剑客精灵）
+## 本次进展（青锋剑客精灵与闪避动作）
 
-待机和奔跑来自六秒循环视频的去背帧：待机取 01–08，奔跑取能接回的 15–23。行走仍是用户提供的 15 帧。三套外袍按行走的青绿对齐饱和度。轴心用自定义脚底（`spritePivot.y = 0.09`），避免画布中心把行走整体拉低。
+待机和奔跑来自六秒循环视频的去背帧：待机取 01–08，奔跑取能接回的 15–23。行走仍是用户提供的 15 帧。闪避动作共 8 帧侧身短闪，前倾起段并带短滑步。三套外袍按行走的青绿对齐饱和度。轴心用自定义脚底（`spritePivot.y = 0.09`），避免画布中心把行走整体拉低。
 
-Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑。预览场景 `Assets/Scenes/SpritePreview.unity`，**A / D** 走，**Shift + A / D** 跑。待机 / 奔跑 PPU 为 214，行走 PPU 为 100，世界身高对齐。
+Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑，`Dodge` Trigger 触发闪避。预览场景 `Assets/Scenes/SpritePreview.unity`，**A / D** 走，**Shift + A / D** 跑，**Space** 闪避（可配合 A/D 指定方向）。待机 / 奔跑 / 闪避 PPU 为 214，行走 PPU 为 100，世界身高对齐。闪避位移调校为前冲略微位移一小段（约 0.45 单位），位移在前半段（前 0.20s / 2~7帧）完成，后半段稳定着地收招。
 
 帧序列图：
 
@@ -25,11 +25,13 @@ Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑。预览场景 `As
 | 待机 8 帧 | [设计/青锋帧序列/idle-sequence.png](设计/青锋帧序列/idle-sequence.png) |
 | 行走 15 帧 | [设计/青锋帧序列/walk-sequence.png](设计/青锋帧序列/walk-sequence.png) |
 | 奔跑 9 帧 | [设计/青锋帧序列/run-sequence.png](设计/青锋帧序列/run-sequence.png) |
+| 闪避 8 帧 | [设计/青锋帧序列/dodge-sequence.png](设计/青锋帧序列/dodge-sequence.png) |
 
 | 文档 | 说明 |
 |---|---|
 | [行走动作帧设计表](设计/刀影江湖-行走动作帧设计表.md) | 60fps 起版。青锋 36 帧 / 0.60s，抽成 8 关键 |
 | [跑步动作帧设计表](设计/刀影江湖-跑步动作帧设计表.md) | 60fps 起版。青锋 26 帧 / 0.43s，抽成 8 关键 |
+| [闪避动作帧设计表](设计/刀影江湖-闪避动作帧设计表.md) | 60fps 起版。青锋 18 帧 / 0.30s，8 关键帧，无敌帧 3–12，位移约 0.45 单位 |
 
 参考设定：
 
@@ -87,7 +89,25 @@ Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑。预览场景 `As
 | `Run/run-stride.json` | 靴距约 140px，设计移速约 3.23 单位/秒 |
 | `Run/PlayerRun.anim` | 循环剪辑（每帧 45ms，周期 0.405s） |
 
-菜单 **刀影江湖 → 生成待机行走奔跑帧动画** 会把 png 重新写成剪辑并挂到控制器。
+### 闪避 · 8 帧（每帧 75ms，总长 0.60s）
+
+侧视快速短闪：下蹲蓄势 → 蹬出侧滑 → 着地减速稳立。对应战斗帧数据表 `MOV-DODGE`（无敌帧 3–12）。位移设计为略微前移一小段（约 0.45 单位，约为三分之一身长），位移在起步前冲的前半段（前 0.20s / 2~7 帧）快速完成，后半段扎实着地收势，避免贴地大幅滑行。
+
+![闪避帧序列](设计/青锋帧序列/dodge-sequence.png)
+
+![闪避动图](New%20Tuanjie%20Project/Assets/Sprites/Player/Dodge/animation.gif)
+
+![闪避图集](New%20Tuanjie%20Project/Assets/Sprites/Player/Dodge/sheet-transparent.png)
+
+| 文件 | 说明 |
+|---|---|
+| `Dodge/dodge-1.png` … `dodge-8.png` | 单帧，PPU 214 |
+| `设计/青锋帧序列/dodge-sequence.png` | 8 帧序列图 |
+| `Dodge/animation.gif` | 预览动图 |
+| `Dodge/PlayerDodge.anim` | 单次剪辑（每帧 75ms，总长 0.60s） |
+| `Dodge/sheet-transparent.png` | 透明精灵图集 |
+
+菜单 **刀影江湖 → 生成待机行走奔跑闪避帧动画** 会把 png 重新写成剪辑并挂到控制器。
 
 ---
 
@@ -145,6 +165,7 @@ Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑。预览场景 `As
 | `设计/刀影江湖-场景镜头描述本.md` | 镜头 |
 | `设计/刀影江湖-行走动作帧设计表.md` | 全角色行走 8 关键 / 周期 |
 | `设计/刀影江湖-跑步动作帧设计表.md` | 全角色奔跑 8 关键 / 前倾 / 周期 |
+| `设计/刀影江湖-闪避动作帧设计表.md` | 全角色闪避 8 相位 / 无敌帧 / 位移手感 |
 
 ---
 
@@ -152,6 +173,6 @@ Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑。预览场景 `As
 
 - 团结工程：`New Tuanjie Project/`
 - 玩家脚本：`Assets/Scripts/Player/`、`Assets/Scripts/Combat/`
-- 预览输入：`PlayerSpriteLocomotion.cs`（A/D 走，Shift+A/D 跑）
+- 预览输入：`PlayerSpriteLocomotion.cs`（A/D 走，Shift+A/D 跑，Space 闪避）
 - 打滑修正：`CharacterFootskateFix.cs`、`QingfengWalkStride.cs`、`QingfengRunStride.cs`
 - 战斗里玩家精灵：`CombatActor` 加载 `PlayerIdle.controller`

@@ -194,6 +194,11 @@ public class CombatActor : MonoBehaviour
         if (pb != null) pb.ConsumeAction(action);
     }
 
+    public void TriggerAnim(string triggerName)
+    {
+        if (playerAnim != null) playerAnim.SetTrigger(triggerName);
+    }
+
     // ---------------- 受击 ----------------
 
     public void ApplyHit(HitInfo h, CombatActor attacker)

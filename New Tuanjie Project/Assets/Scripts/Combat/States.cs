@@ -135,6 +135,7 @@ public class DodgeState : ActorState
         base.Enter();
         dir = Mathf.Abs(actor.inp.moveX) > 0.01f ? (int)Mathf.Sign(actor.inp.moveX) : actor.facing;
         if (air) actor.airDodgeUsed = true;
+        actor.TriggerAnim("Dodge");
     }
 
     public override void Tick()
@@ -142,10 +143,11 @@ public class DodgeState : ActorState
         base.Tick();
         if (mv == null) { actor.ChangeState(new GroundedState(actor)); return; }
 
-        // 位移：1.2身≈1.68单位，在10帧内走完
-        if (Frame >= mv.startup && Frame <= 12)
+        // 位移：略微前移一小段（约 0.45 单位），在闪避前半段走完，后半段着地收招
+        if (Frame >= mv.startup && Frame <= 7)
         {
-            float speed = mv.lunge * 1.4f * 6f;
+            float lungeFrames = 7 - mv.startup + 1;
+            float speed = mv.lunge / (lungeFrames / 60f);
             actor.body.vel.x = dir * speed;
             if (air) actor.body.vel.y = 0f;
         }
