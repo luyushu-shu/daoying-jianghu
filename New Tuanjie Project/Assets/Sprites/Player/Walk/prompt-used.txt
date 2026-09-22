@@ -1,2 +1,3 @@
 ﻿用户提供的 15 帧行走（WeChat frames：frame_001.png–frame_015.png，每帧 140ms，周期 2.1s）。
 未重画。按待机 scale profile qingfeng-swordsman 缩到 256、脚底对齐；品红底去脚下浅色投影后切帧。
+袍色按待机青绿 HSV 对齐，动作与腿位不动。

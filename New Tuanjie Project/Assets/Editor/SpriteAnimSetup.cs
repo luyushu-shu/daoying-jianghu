@@ -19,28 +19,36 @@ public static class SpriteAnimSetup
     const string WalkClipPath = WalkDir + "/PlayerWalk.anim";
     const string RunClipPath = RunDir + "/PlayerRun.anim";
     const string PreviewScenePath = "Assets/Scenes/SpritePreview.unity";
-    static readonly string[] IdleFrames = { "idle-1", "idle-2", "idle-3", "idle-4", "idle-5", "idle-6" };
+    static readonly string[] IdleFrames =
+    {
+        "idle-1", "idle-2", "idle-3", "idle-4",
+        "idle-5", "idle-6", "idle-7", "idle-8"
+    };
     static readonly string[] WalkFrames =
     {
         "walk-1", "walk-2", "walk-3", "walk-4", "walk-5",
         "walk-6", "walk-7", "walk-8", "walk-9", "walk-10",
         "walk-11", "walk-12", "walk-13", "walk-14", "walk-15"
     };
-    static readonly string[] RunFrames = { "run-1", "run-2", "run-3", "run-4", "run-5", "run-6", "run-7", "run-8" };
-    const float IdleFrameSeconds = 0.2f;
+    static readonly string[] RunFrames =
+    {
+        "run-1", "run-2", "run-3", "run-4", "run-5",
+        "run-6", "run-7", "run-8", "run-9"
+    };
+    const float IdleFrameSeconds = 0.16f;
     const float WalkFrameSeconds = 0.14f;
-    const float RunFrameSeconds = 0.054f;
+    const float RunFrameSeconds = QingfengRunStride.FrameSeconds;
     const float RunSpeedThreshold = 0.55f;
     static readonly Vector2 FeetPivot = new Vector2(0.5f, 0.09f);
 
     [MenuItem("刀影江湖/生成待机行走奔跑帧动画")]
     public static void Setup()
     {
-        Sprite[] idleSprites = ImportFrames(IdleDir, IdleFrames);
+        Sprite[] idleSprites = ImportFrames(IdleDir, IdleFrames, 214f);
         if (idleSprites == null) return;
-        Sprite[] walkSprites = ImportFrames(WalkDir, WalkFrames);
+        Sprite[] walkSprites = ImportFrames(WalkDir, WalkFrames, 100f);
         if (walkSprites == null) return;
-        Sprite[] runSprites = ImportFrames(RunDir, RunFrames);
+        Sprite[] runSprites = ImportFrames(RunDir, RunFrames, 214f);
         if (runSprites == null) return;
 
         AnimationClip idleClip = WriteLoopClip(IdleClipPath, "PlayerIdle", idleSprites, IdleFrameSeconds);
@@ -60,7 +68,7 @@ public static class SpriteAnimSetup
         Debug.Log("[SpriteAnimSetup] 完成：Idle/Walk/Run，Speed 衔接。预览 A/D 走，Shift+A/D 跑。");
     }
 
-    static Sprite[] ImportFrames(string dir, string[] names)
+    static Sprite[] ImportFrames(string dir, string[] names, float pixelsPerUnit)
     {
         Sprite[] sprites = new Sprite[names.Length];
         for (int i = 0; i < names.Length; i++)
@@ -74,8 +82,14 @@ public static class SpriteAnimSetup
             }
             ti.textureType = TextureImporterType.Sprite;
             ti.spriteImportMode = SpriteImportMode.Single;
+            TextureImporterSettings texSettings = new TextureImporterSettings();
+            ti.ReadTextureSettings(texSettings);
+            texSettings.spriteAlignment = (int)SpriteAlignment.Custom;
+            texSettings.spritePivot = FeetPivot;
+            texSettings.spritePixelsPerUnit = pixelsPerUnit;
+            ti.SetTextureSettings(texSettings);
             ti.spritePivot = FeetPivot;
-            ti.spritePixelsPerUnit = 100f;
+            ti.spritePixelsPerUnit = pixelsPerUnit;
             ti.filterMode = FilterMode.Bilinear;
             ti.mipmapEnabled = false;
             ti.alphaIsTransparency = true;

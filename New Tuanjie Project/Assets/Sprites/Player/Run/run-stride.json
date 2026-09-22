@@ -1,11 +1,11 @@
 {
-  "fps": 18.52,
-  "pixelsPerUnit": 100,
-  "framesPerStep": 4,
-  "cycle": "R1 inner-near 3/4 boot forward, R5 outer-far dark boot forward; R3 dark-knee flight, R7 3/4-knee flight; R4 dark reach, R8 3/4 reach",
-  "leadingFootXPx": [170.7, 150.4, 150.3, 212.9, 169.8, 181.3, 112.9, 135.7],
-  "trailingFootXPx": [101.7, 101.8, 102.3, 89.2, 93.2, 87.0, 104.0, 64.0],
-  "stepDistancePixels": 72.8,
-  "designMoveSpeed": 3.37,
-  "notes": "接触帧 R1/R5 前后靴心距平均 72.8。右半程 R1/R2/R7/R8 近靴家族，左半程 R3–R6 远靴家族。"
+  "fps": 22.22,
+  "pixelsPerUnit": 214,
+  "frameCount": 9,
+  "stepsPerCycle": 2,
+  "frameSeconds": 0.045,
+  "cycleSeconds": 0.405,
+  "stepDistancePixels": 140,
+  "designMoveSpeed": 3.23,
+  "notes": "外袍饱和度对齐行走青绿。待机与奔跑按行走身高用 PPU 214。待机下半脸暗斑已提亮。"
 }

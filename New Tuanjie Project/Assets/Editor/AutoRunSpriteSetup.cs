@@ -6,7 +6,7 @@ using UnityEngine;
 /// <summary>
 /// 一次性自执行器：检测到 Assets/_run_sprite_setup.marker 存在时，
 /// 在当前打开的编辑器里自动调用 SpriteAnimSetup.Setup()，并写出结果标记文件。
-/// rev: 10 行走换成用户 15 帧（140ms / 帧）
+/// rev: 12 待机 8 帧、奔跑 9 帧，轴心改到脚底
 /// </summary>
 [InitializeOnLoad]
 public static class AutoRunSpriteSetup

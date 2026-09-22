@@ -14,9 +14,17 @@
 
 ## 本次进展（青锋剑客精灵）
 
-按青袍侧视设定，用 generate2dsprite 做出可进游戏的待机 / 行走 / 奔跑帧，并接到 Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑。预览场景 `Assets/Scenes/SpritePreview.unity`，**A / D** 走，**Shift + A / D** 跑。战斗原型里玩家移动播奔跑。三套动作共用待机 scale profile `qingfeng-swordsman`，身形一致。
+待机和奔跑来自六秒循环视频的去背帧：待机取 01–08，奔跑取能接回的 15–23。行走仍是用户提供的 15 帧。三套外袍按行走的青绿对齐饱和度。轴心用自定义脚底（`spritePivot.y = 0.09`），避免画布中心把行走整体拉低。
 
-行走当前进游戏的是用户提供的 15 帧循环（每帧 140ms，周期 2.1s），按待机尺度缩放后替换原 8 关键。奔跑仍按帧设计表抽 8 关键；前倾约 20°–25°（表内巡航角 8°–12° 在精灵尺寸上不够清楚）。奔跑循环必须左右腿交替：R1 近靴在前 / R5 远靴在前。
+Animator：`Speed > 0.1` 切行走，`Speed > 0.55` 切奔跑。预览场景 `Assets/Scenes/SpritePreview.unity`，**A / D** 走，**Shift + A / D** 跑。待机 / 奔跑 PPU 为 214，行走 PPU 为 100，世界身高对齐。
+
+帧序列图：
+
+| 动作 | 序列 |
+|---|---|
+| 待机 8 帧 | [设计/青锋帧序列/idle-sequence.png](设计/青锋帧序列/idle-sequence.png) |
+| 行走 15 帧 | [设计/青锋帧序列/walk-sequence.png](设计/青锋帧序列/walk-sequence.png) |
+| 奔跑 9 帧 | [设计/青锋帧序列/run-sequence.png](设计/青锋帧序列/run-sequence.png) |
 
 | 文档 | 说明 |
 |---|---|
@@ -31,22 +39,26 @@
 
 ![青锋移动循环](设计/刀影江湖-概念图/人物设定/动作设计/11-青锋剑客-移动循环.jpg)
 
-### 待机 · 6 帧（2×3）
+### 待机 · 8 帧（每帧 160ms）
 
-侧视持剑站立，只做呼吸与衣发微动。脚底对齐，尺度配置写在 `character-scale-profile.json`，后续动作共用。
+侧视持剑站立，呼吸与衣发微动。源序列 01–08。下半脸暗斑已提亮。脚底对齐到轴心。
+
+![待机帧序列](设计/青锋帧序列/idle-sequence.png)
 
 ![待机循环](New%20Tuanjie%20Project/Assets/Sprites/Player/Idle/animation.gif)
 
 | 文件 | 说明 |
 |---|---|
-| `New Tuanjie Project/Assets/Sprites/Player/Idle/idle-1.png` … `idle-6.png` | 单帧 |
-| `Idle/sheet-transparent.png` | 透明图集 |
-| `Idle/PlayerIdle.anim` | 循环剪辑 |
+| `Idle/idle-1.png` … `idle-8.png` | 单帧，PPU 214 |
+| `设计/青锋帧序列/idle-sequence.png` | 8 帧序列图 |
+| `Idle/PlayerIdle.anim` | 循环剪辑（每帧 160ms） |
 | `Idle/PlayerIdle.controller` | Idle ↔ Walk ↔ Run 状态机 |
 
-### 行走 · 15 帧（3×5，每帧 140ms）
+### 行走 · 15 帧（每帧 140ms）
 
-用户提供的 15 帧侧视行走，未重画。按待机 scale profile 缩到 256、脚底对齐，去掉原图脚下浅色投影。周期 2.1s；接触帧靴距约 43px，两步一个循环。
+用户提供的 15 帧侧视行走。画布 256，PPU 100。周期 2.1s；接触帧靴距约 42.8px，两步一个循环。外袍青绿是待机 / 奔跑对色的基准。
+
+![行走帧序列](设计/青锋帧序列/walk-sequence.png)
 
 ![行走循环](New%20Tuanjie%20Project/Assets/Sprites/Player/Walk/animation.gif)
 
@@ -60,30 +72,20 @@
 
 行走时世界移速必须和脚步后移匹配，否则会打滑。预览按设计移速平移；战斗里 `CharacterFootskateFix` 按「实际移速 / 当前动作设计移速」缩放 Animator。
 
-### 奔跑 · 8 帧（2×4，约 18.5 FPS）
+### 奔跑 · 9 帧（每帧 45ms）
 
-按 [跑步动作帧设计表](设计/刀影江湖-跑步动作帧设计表.md) 的青锋 26 帧 / 0.43s 周期抽 8 关键：Contact / Push-off / Flight / Prep ×2。压剑疾行，双手按鞘，原地跑步机循环。R1 近处三分之四靴在前，R5 外侧暗靴在前；R3 / R7 收对侧膝。
+源序列 15–23 为一整圈（下一帧与 15 同姿），原地持剑奔跑。外袍饱和度对齐行走。PPU 214，与行走世界身高一致。拉开时前后靴心距约 140px，两步一个循环，设计移速约 3.23 单位/秒。
+
+![奔跑帧序列](设计/青锋帧序列/run-sequence.png)
 
 ![奔跑循环](New%20Tuanjie%20Project/Assets/Sprites/Player/Run/animation.gif)
 
-![奔跑图集](New%20Tuanjie%20Project/Assets/Sprites/Player/Run/sheet-transparent.png)
-
-| 关键帧 | 相位 | 支撑 / 腾空 |
-|---|---|---|
-| R1 | 右脚接触 Contact | 右脚短接触，近靴在前 |
-| R2 | 右脚蹬离 Push-off | 右将离地 |
-| R3 | 腾空 · 左腿折叠 Flight | 双脚离地，左膝收起 |
-| R4 | 左脚将落 Prep | 远靴前伸将落 |
-| R5 | 左脚接触 | 左短接触，远靴在前（对偶 R1） |
-| R6 | 左脚蹬离 | 对偶 R2 |
-| R7 | 腾空 · 右腿折叠 | 双脚离地，右膝收起（对偶 R3） |
-| R8 | 右脚将落 | 近靴前伸，回到 R1 |
-
 | 文件 | 说明 |
 |---|---|
-| `Run/run-1.png` … `run-8.png` | 单帧 |
-| `Run/run-stride.json` | 接触帧靴距约 72.8px，设计移速约 3.37 单位/秒 |
-| `Run/PlayerRun.anim` | 循环剪辑（每帧 54ms，周期 0.43s） |
+| `Run/run-1.png` … `run-9.png` | 单帧，PPU 214 |
+| `设计/青锋帧序列/run-sequence.png` | 9 帧序列图 |
+| `Run/run-stride.json` | 靴距约 140px，设计移速约 3.23 单位/秒 |
+| `Run/PlayerRun.anim` | 循环剪辑（每帧 45ms，周期 0.405s） |
 
 菜单 **刀影江湖 → 生成待机行走奔跑帧动画** 会把 png 重新写成剪辑并挂到控制器。
 
@@ -91,7 +93,7 @@
 
 ## 帧设计表（全文）
 
-60fps 侧面横版、右向为正方向。表内覆盖青锋、三门、杂兵与 Boss 的 Walk / Run 周期；青锋精灵按其中 8 关键落地。
+60fps 侧面横版、右向为正方向。表内覆盖青锋、三门、杂兵与 Boss 的 Walk / Run 周期。青锋当前进游戏的待机 / 奔跑是视频帧循环，行走是 15 帧；设计表仍作全角色节奏参考。
 
 - 行走全文：[设计/刀影江湖-行走动作帧设计表.md](设计/刀影江湖-行走动作帧设计表.md)
   - 青锋：36 帧、0.60s、短步轻走、Walk 前倾 0–3°
