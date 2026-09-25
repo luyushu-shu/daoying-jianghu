@@ -14,12 +14,18 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     const float DodgeMoveDuration = 0.20f;
     const float JumpVelocity = 8.5f;
     const float Gravity = 24.0f;
+    const float BlockDuration = 0.68f;
+    const float ParryWindow = 0.18f;
 
     Animator animator;
     SpriteRenderer spriteRenderer;
     CombatActor combat;
     float dodgeTimer = 0f;
     float dodgeDir = 1f;
+    float blockTimer = 0f;
+
+    public bool IsBlocking => blockTimer > 0f;
+    public bool IsParryWindow => blockTimer > 0f && (BlockDuration - blockTimer) <= ParryWindow;
 
     float velY = 0f;
     float groundY = 0f;
@@ -90,6 +96,43 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             return;
         }
 
+        // 格挡状态维持与取消处理
+        if (blockTimer > 0f)
+        {
+            blockTimer -= Time.deltaTime;
+            if (blockTimer < 0f) blockTimer = 0f;
+
+            // 格挡期间允许按空格紧急闪避打断
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                blockTimer = 0f;
+                StartDodge();
+                return;
+            }
+
+            // 格挡期间允许反击（轻击/重刺）
+            if (Input.GetKeyDown(KeyCode.J) || Input.GetMouseButtonDown(0))
+            {
+                blockTimer = 0f;
+                PerformNextAttack();
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.K) || Input.GetMouseButtonDown(1))
+            {
+                blockTimer = 0f;
+                PerformHeavyThrust();
+                return;
+            }
+
+            // 长按 F 维持格挡姿态
+            if (Input.GetKey(KeyCode.F) && blockTimer < 0.25f)
+            {
+                blockTimer = 0.25f;
+            }
+            return;
+        }
+
         // 攻击连段窗口更新
         if (comboWindow > 0f)
         {
@@ -119,6 +162,17 @@ public class PlayerSpriteLocomotion : MonoBehaviour
                 comboWindow = 0f;
                 lungeTimer = 0f;
                 StartDodge();
+                return;
+            }
+
+            // 攻击期间允许按 F 取消进格挡招架（仅轻攻击允许）
+            if (Input.GetKeyDown(KeyCode.F) && attackStep < 4)
+            {
+                attackTimer = 0f;
+                attackStep = 0;
+                comboWindow = 0f;
+                lungeTimer = 0f;
+                PerformBlock();
                 return;
             }
 
@@ -158,6 +212,13 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Space) && !Input.GetKey(KeyCode.W))
         {
             StartDodge();
+            return;
+        }
+
+        // 触发格挡招架 (F 键)
+        if (Input.GetKeyDown(KeyCode.F) && isGrounded && dodgeTimer <= 0f)
+        {
+            PerformBlock();
             return;
         }
 
@@ -258,5 +319,15 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         lungeTimer = 0.18f;
         lungeSpeed = 0.40f / 0.18f;
         animator.SetTrigger("HeavyThrust");
+    }
+
+    void PerformBlock()
+    {
+        attackStep = 0;
+        attackTimer = 0f;
+        comboWindow = 0f;
+        lungeTimer = 0f;
+        blockTimer = BlockDuration;
+        animator.SetTrigger("Block");
     }
 }
