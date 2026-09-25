@@ -12,12 +12,18 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     const float DodgeDuration = 0.60f;
     const float DodgeDistance = 0.45f;
     const float DodgeMoveDuration = 0.20f;
+    const float JumpVelocity = 8.5f;
+    const float Gravity = 24.0f;
 
     Animator animator;
     SpriteRenderer spriteRenderer;
     CombatActor combat;
     float dodgeTimer = 0f;
     float dodgeDir = 1f;
+
+    float velY = 0f;
+    float groundY = 0f;
+    bool isGrounded = true;
 
     int attackStep = 0;
     float attackTimer = 0f;
@@ -42,11 +48,28 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         animator = GetComponent<Animator>();
         spriteRenderer = GetComponent<SpriteRenderer>();
         combat = GetComponent<CombatActor>();
+        groundY = transform.position.y;
     }
 
     void Update()
     {
         if (combat != null) return;
+
+        // 空中运动与重力解算
+        if (!isGrounded)
+        {
+            velY -= Gravity * Time.deltaTime;
+            Vector3 p = transform.position;
+            p.y += velY * Time.deltaTime;
+            if (p.y <= groundY)
+            {
+                p.y = groundY;
+                velY = 0f;
+                isGrounded = true;
+                animator.SetBool("IsGrounded", true);
+            }
+            transform.position = p;
+        }
 
         // 闪避状态位移（略微前移一小段，前半段冲刺位移，后半段着地收招）
         if (dodgeTimer > 0f)
@@ -88,8 +111,8 @@ public class PlayerSpriteLocomotion : MonoBehaviour
                 transform.position = p;
             }
 
-            // 攻击期间允许空格打断/取消进闪避
-            if (Input.GetKeyDown(KeyCode.Space))
+            // 攻击期间允许空格打断/取消进闪避（仅轻攻击允许，重刺不可打断）
+            if (Input.GetKeyDown(KeyCode.Space) && attackStep < 4)
             {
                 attackTimer = 0f;
                 attackStep = 0;
@@ -108,13 +131,40 @@ public class PlayerSpriteLocomotion : MonoBehaviour
                     return;
                 }
             }
+
+            // 轻攻击中段接重刺终结（A_L2H）
+            if (Input.GetKeyDown(KeyCode.K) || Input.GetMouseButtonDown(1))
+            {
+                if (attackTimer < 0.20f && (attackStep == 1 || attackStep == 2))
+                {
+                    PerformHeavyThrust();
+                    return;
+                }
+            }
             return;
         }
 
-        // 触发闪避 (Space)
-        if (Input.GetKeyDown(KeyCode.Space))
+        // 触发跳跃 (W / 向上键 / W+Space)
+        bool jumpInput = Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow) || (Input.GetKey(KeyCode.W) && Input.GetKeyDown(KeyCode.Space));
+        if (jumpInput && isGrounded && dodgeTimer <= 0f)
+        {
+            isGrounded = false;
+            velY = JumpVelocity;
+            animator.SetBool("IsGrounded", false);
+            animator.SetTrigger("Jump");
+        }
+
+        // 触发闪避 (Space，且未按住 W)
+        if (Input.GetKeyDown(KeyCode.Space) && !Input.GetKey(KeyCode.W))
         {
             StartDodge();
+            return;
+        }
+
+        // 触发重刺 (K 或 鼠标右键)
+        if (Input.GetKeyDown(KeyCode.K) || Input.GetMouseButtonDown(1))
+        {
+            PerformHeavyThrust();
             return;
         }
 
@@ -152,7 +202,8 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         {
             spriteRenderer.flipX = mx < 0f;
             Vector3 p = transform.position;
-            p.x += mx * moveSpeed * Time.deltaTime;
+            float airFactor = isGrounded ? 1f : 0.8f;
+            p.x += mx * moveSpeed * airFactor * Time.deltaTime;
             transform.position = p;
         }
     }
@@ -197,5 +248,15 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             lungeSpeed = 0.25f / 0.12f;
             animator.SetTrigger("Attack3");
         }
+    }
+
+    void PerformHeavyThrust()
+    {
+        attackStep = 4;
+        attackTimer = 0.76f;
+        comboWindow = 0f;
+        lungeTimer = 0.18f;
+        lungeSpeed = 0.40f / 0.18f;
+        animator.SetTrigger("HeavyThrust");
     }
 }

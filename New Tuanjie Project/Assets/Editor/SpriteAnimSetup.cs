@@ -16,6 +16,8 @@ public static class SpriteAnimSetup
     const string RunDir = "Assets/Sprites/Player/Run";
     const string DodgeDir = "Assets/Sprites/Player/Dodge";
     const string AttackDir = "Assets/Sprites/Player/Attack";
+    const string JumpDir = "Assets/Sprites/Player/Jump";
+    const string HeavyThrustDir = "Assets/Sprites/Player/HeavyThrust";
     const string ControllerPath = IdleDir + "/PlayerIdle.controller";
     const string IdleClipPath = IdleDir + "/PlayerIdle.anim";
     const string WalkClipPath = WalkDir + "/PlayerWalk.anim";
@@ -24,6 +26,8 @@ public static class SpriteAnimSetup
     const string Attack1ClipPath = AttackDir + "/PlayerAttack1.anim";
     const string Attack2ClipPath = AttackDir + "/PlayerAttack2.anim";
     const string Attack3ClipPath = AttackDir + "/PlayerAttack3.anim";
+    const string JumpClipPath = JumpDir + "/PlayerJump.anim";
+    const string HeavyThrustClipPath = HeavyThrustDir + "/PlayerHeavyThrust.anim";
     const string PreviewScenePath = "Assets/Scenes/SpritePreview.unity";
     static readonly string[] IdleFrames =
     {
@@ -58,15 +62,27 @@ public static class SpriteAnimSetup
     {
         "attack-9", "attack-10", "attack-11", "attack-12"
     };
+    static readonly string[] JumpFrames =
+    {
+        "jump-1", "jump-2", "jump-3", "jump-4",
+        "jump-5", "jump-6", "jump-7", "jump-8"
+    };
+    static readonly string[] HeavyThrustFrames =
+    {
+        "heavy-1", "heavy-2", "heavy-3", "heavy-4",
+        "heavy-5", "heavy-6", "heavy-7", "heavy-8"
+    };
     const float IdleFrameSeconds = 0.16f;
     const float WalkFrameSeconds = 0.14f;
     const float RunFrameSeconds = QingfengRunStride.FrameSeconds;
     const float DodgeFrameSeconds = 0.075f;
     const float AttackFrameSeconds = 0.085f;
+    const float JumpFrameSeconds = 0.085f;
+    const float HeavyThrustFrameSeconds = 0.095f;
     const float RunSpeedThreshold = 0.55f;
     static readonly Vector2 FeetPivot = new Vector2(0.5f, 0.09f);
 
-    [MenuItem("刀影江湖/生成待机行走奔跑闪避攻击帧动画")]
+    [MenuItem("刀影江湖/生成待机行走奔跑闪避攻击跳跃重刺帧动画")]
     public static void Setup()
     {
         Sprite[] idleSprites = ImportFrames(IdleDir, IdleFrames, 214f);
@@ -83,6 +99,10 @@ public static class SpriteAnimSetup
         if (atk2Sprites == null) return;
         Sprite[] atk3Sprites = ImportFrames(AttackDir, Attack3Frames, 214f);
         if (atk3Sprites == null) return;
+        Sprite[] jumpSprites = ImportFrames(JumpDir, JumpFrames, 214f);
+        if (jumpSprites == null) return;
+        Sprite[] heavySprites = ImportFrames(HeavyThrustDir, HeavyThrustFrames, 214f);
+        if (heavySprites == null) return;
 
         AnimationClip idleClip = WriteClip(IdleClipPath, "PlayerIdle", idleSprites, IdleFrameSeconds, true);
         AnimationClip walkClip = WriteClip(WalkClipPath, "PlayerWalk", walkSprites, WalkFrameSeconds, true);
@@ -91,18 +111,20 @@ public static class SpriteAnimSetup
         AnimationClip atk1Clip = WriteClip(Attack1ClipPath, "PlayerAttack1", atk1Sprites, AttackFrameSeconds, false);
         AnimationClip atk2Clip = WriteClip(Attack2ClipPath, "PlayerAttack2", atk2Sprites, AttackFrameSeconds, false);
         AnimationClip atk3Clip = WriteClip(Attack3ClipPath, "PlayerAttack3", atk3Sprites, AttackFrameSeconds, false);
+        AnimationClip jumpClip = WriteClip(JumpClipPath, "PlayerJump", jumpSprites, JumpFrameSeconds, false);
+        AnimationClip heavyClip = WriteClip(HeavyThrustClipPath, "PlayerHeavyThrust", heavySprites, HeavyThrustFrameSeconds, false);
 
         AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
         if (controller == null)
             controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
-        RebuildLocomotionController(controller, idleClip, walkClip, runClip, dodgeClip, atk1Clip, atk2Clip, atk3Clip);
+        RebuildLocomotionController(controller, idleClip, walkClip, runClip, dodgeClip, atk1Clip, atk2Clip, atk3Clip, jumpClip, heavyClip);
         EditorUtility.SetDirty(controller);
 
         BindPreviewCharacter(controller, idleSprites[0]);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[SpriteAnimSetup] 完成：Idle/Walk/Run/Dodge/Attack1/Attack2/Attack3。预览 A/D 走，Shift+A/D 跑，Space 闪避，J 三连斩。");
+        Debug.Log("[SpriteAnimSetup] 完成：Idle/Walk/Run/Dodge/Attack1-3/Jump/HeavyThrust。预览 A/D 走，Shift+A/D 跑，W/Up 跳跃，Space 闪避，J 三连斩，K/右键 重刺。");
     }
 
     static Sprite[] ImportFrames(string dir, string[] names, float pixelsPerUnit)
@@ -169,7 +191,7 @@ public static class SpriteAnimSetup
         return clip;
     }
 
-    static void RebuildLocomotionController(AnimatorController controller, AnimationClip idle, AnimationClip walk, AnimationClip run, AnimationClip dodge, AnimationClip atk1, AnimationClip atk2, AnimationClip atk3)
+    static void RebuildLocomotionController(AnimatorController controller, AnimationClip idle, AnimationClip walk, AnimationClip run, AnimationClip dodge, AnimationClip atk1, AnimationClip atk2, AnimationClip atk3, AnimationClip jump, AnimationClip heavy)
     {
         for (int i = controller.parameters.Length - 1; i >= 0; i--)
             controller.RemoveParameter(i);
@@ -178,6 +200,9 @@ public static class SpriteAnimSetup
         controller.AddParameter("Attack1", AnimatorControllerParameterType.Trigger);
         controller.AddParameter("Attack2", AnimatorControllerParameterType.Trigger);
         controller.AddParameter("Attack3", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("Jump", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("HeavyThrust", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("IsGrounded", AnimatorControllerParameterType.Bool);
 
         AnimatorStateMachine sm = controller.layers[0].stateMachine;
         ChildAnimatorState[] existing = sm.states;
@@ -192,6 +217,8 @@ public static class SpriteAnimSetup
         runState.motion = run;
         AnimatorState dodgeState = sm.AddState("Dodge", new Vector3(480f, -120f, 0f));
         dodgeState.motion = dodge;
+        AnimatorState jumpState = sm.AddState("Jump", new Vector3(200f, -120f, 0f));
+        jumpState.motion = jump;
 
         AnimatorState atk1State = sm.AddState("Attack1", new Vector3(200f, 140f, 0f));
         atk1State.motion = atk1;
@@ -199,6 +226,8 @@ public static class SpriteAnimSetup
         atk2State.motion = atk2;
         AnimatorState atk3State = sm.AddState("Attack3", new Vector3(760f, 140f, 0f));
         atk3State.motion = atk3;
+        AnimatorState heavyState = sm.AddState("HeavyThrust", new Vector3(480f, 260f, 0f));
+        heavyState.motion = heavy;
 
         sm.defaultState = idleState;
 
@@ -215,6 +244,20 @@ public static class SpriteAnimSetup
         toDodge.hasFixedDuration = true;
         toDodge.duration = 0.02f;
         toDodge.AddCondition(AnimatorConditionMode.If, 0f, "Dodge");
+
+        // AnyState -> Jump
+        AnimatorStateTransition toJump = sm.AddAnyStateTransition(jumpState);
+        toJump.hasExitTime = false;
+        toJump.hasFixedDuration = true;
+        toJump.duration = 0.02f;
+        toJump.AddCondition(AnimatorConditionMode.If, 0f, "Jump");
+
+        // AnyState -> HeavyThrust
+        AnimatorStateTransition toHeavy = sm.AddAnyStateTransition(heavyState);
+        toHeavy.hasExitTime = false;
+        toHeavy.hasFixedDuration = true;
+        toHeavy.duration = 0.02f;
+        toHeavy.AddCondition(AnimatorConditionMode.If, 0f, "HeavyThrust");
 
         // AnyState -> Attack1
         AnimatorStateTransition toAtk1 = sm.AddAnyStateTransition(atk1State);
@@ -236,6 +279,20 @@ public static class SpriteAnimSetup
         toAtk3.hasFixedDuration = true;
         toAtk3.duration = 0.02f;
         toAtk3.AddCondition(AnimatorConditionMode.If, 0f, "Attack3");
+
+        // HeavyThrust -> Idle
+        AnimatorStateTransition fromHeavy = heavyState.AddTransition(idleState);
+        fromHeavy.hasExitTime = true;
+        fromHeavy.exitTime = 0.92f;
+        fromHeavy.hasFixedDuration = true;
+        fromHeavy.duration = 0.05f;
+
+        // Jump -> Idle (落地回正)
+        AnimatorStateTransition fromJump = jumpState.AddTransition(idleState);
+        fromJump.hasExitTime = true;
+        fromJump.exitTime = 0.92f;
+        fromJump.hasFixedDuration = true;
+        fromJump.duration = 0.05f;
 
         // Dodge -> Idle
         AnimatorStateTransition fromDodge = dodgeState.AddTransition(idleState);
