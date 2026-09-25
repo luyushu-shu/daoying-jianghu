@@ -125,6 +125,20 @@ public class PlayerSpriteLocomotion : MonoBehaviour
                 return;
             }
 
+            // 格挡中测试/响应普通格挡受击微光（G 键）
+            if (Input.GetKeyDown(KeyCode.G))
+            {
+                TriggerBlockHit();
+                return;
+            }
+
+            // 格挡中测试/响应完美弹反成功大特效（T 键）
+            if (Input.GetKeyDown(KeyCode.T))
+            {
+                TriggerParrySuccess();
+                return;
+            }
+
             // 长按 F 维持格挡姿态
             if (Input.GetKey(KeyCode.F) && blockTimer < 0.25f)
             {
@@ -215,10 +229,24 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             return;
         }
 
-        // 触发格挡招架 (F 键)
+        // 触发格挡架势 (F 键：没挡刀，纯姿势)
         if (Input.GetKeyDown(KeyCode.F) && isGrounded && dodgeTimer <= 0f)
         {
             PerformBlock();
+            return;
+        }
+
+        // 测试/快捷触发普通格挡成功 (G 键：微弱亮光)
+        if (Input.GetKeyDown(KeyCode.G) && isGrounded && dodgeTimer <= 0f)
+        {
+            TriggerBlockHit();
+            return;
+        }
+
+        // 测试/快捷触发完美弹反成功 (T 键：暴烈大特效)
+        if (Input.GetKeyDown(KeyCode.T) && isGrounded && dodgeTimer <= 0f)
+        {
+            TriggerParrySuccess();
             return;
         }
 
@@ -321,7 +349,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         animator.SetTrigger("HeavyThrust");
     }
 
-    void PerformBlock()
+    public void PerformBlock()
     {
         attackStep = 0;
         attackTimer = 0f;
@@ -329,5 +357,25 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         lungeTimer = 0f;
         blockTimer = BlockDuration;
         animator.SetTrigger("Block");
+    }
+
+    public void TriggerBlockHit()
+    {
+        attackStep = 0;
+        attackTimer = 0f;
+        comboWindow = 0f;
+        lungeTimer = 0f;
+        blockTimer = 0.30f;
+        animator.SetTrigger("BlockHit");
+    }
+
+    public void TriggerParrySuccess()
+    {
+        attackStep = 0;
+        attackTimer = 0f;
+        comboWindow = 0f;
+        lungeTimer = 0f;
+        blockTimer = 0.50f;
+        animator.SetTrigger("ParrySuccess");
     }
 }

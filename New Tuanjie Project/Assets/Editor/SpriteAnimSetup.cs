@@ -18,7 +18,9 @@ public static class SpriteAnimSetup
     const string AttackDir = "Assets/Sprites/Player/Attack";
     const string JumpDir = "Assets/Sprites/Player/Jump";
     const string HeavyThrustDir = "Assets/Sprites/Player/HeavyThrust";
-    const string BlockDir = "Assets/Sprites/Player/Block";
+    const string BlockGuardDir = "Assets/Sprites/Player/Block/Guard";
+    const string BlockHitDir = "Assets/Sprites/Player/Block/Hit";
+    const string BlockParryDir = "Assets/Sprites/Player/Block/Parry";
     const string ControllerPath = IdleDir + "/PlayerIdle.controller";
     const string IdleClipPath = IdleDir + "/PlayerIdle.anim";
     const string WalkClipPath = WalkDir + "/PlayerWalk.anim";
@@ -29,7 +31,10 @@ public static class SpriteAnimSetup
     const string Attack3ClipPath = AttackDir + "/PlayerAttack3.anim";
     const string JumpClipPath = JumpDir + "/PlayerJump.anim";
     const string HeavyThrustClipPath = HeavyThrustDir + "/PlayerHeavyThrust.anim";
-    const string BlockClipPath = BlockDir + "/PlayerBlock.anim";
+    const string BlockGuardClipPath = "Assets/Sprites/Player/Block/PlayerBlockGuard.anim";
+    const string BlockHitClipPath = "Assets/Sprites/Player/Block/PlayerBlockHit.anim";
+    const string BlockParryClipPath = "Assets/Sprites/Player/Block/PlayerParrySuccess.anim";
+    const string BlockClipPath = "Assets/Sprites/Player/Block/PlayerBlock.anim";
     const string PreviewScenePath = "Assets/Scenes/SpritePreview.unity";
     static readonly string[] IdleFrames =
     {
@@ -74,10 +79,19 @@ public static class SpriteAnimSetup
         "heavy-1", "heavy-2", "heavy-3", "heavy-4",
         "heavy-5", "heavy-6", "heavy-7", "heavy-8"
     };
-    static readonly string[] BlockFrames =
+    static readonly string[] BlockGuardFrames =
     {
-        "block-1", "block-2", "block-3", "block-4",
-        "block-5", "block-6", "block-7", "block-8"
+        "guard-1", "guard-2", "guard-3", "guard-4",
+        "guard-5", "guard-6", "guard-7"
+    };
+    static readonly string[] BlockHitFrames =
+    {
+        "hit-1", "hit-2", "hit-3", "hit-4"
+    };
+    static readonly string[] BlockParryFrames =
+    {
+        "parry-1", "parry-2", "parry-3", "parry-4",
+        "parry-5", "parry-6"
     };
     const float IdleFrameSeconds = 0.16f;
     const float WalkFrameSeconds = 0.14f;
@@ -86,7 +100,9 @@ public static class SpriteAnimSetup
     const float AttackFrameSeconds = 0.085f;
     const float JumpFrameSeconds = 0.085f;
     const float HeavyThrustFrameSeconds = 0.095f;
-    const float BlockFrameSeconds = 0.085f;
+    const float BlockGuardFrameSeconds = 0.085f;
+    const float BlockHitFrameSeconds = 0.075f;
+    const float BlockParryFrameSeconds = 0.085f;
     const float RunSpeedThreshold = 0.55f;
     static readonly Vector2 FeetPivot = new Vector2(0.5f, 0.09f);
 
@@ -111,8 +127,12 @@ public static class SpriteAnimSetup
         if (jumpSprites == null) return;
         Sprite[] heavySprites = ImportFrames(HeavyThrustDir, HeavyThrustFrames, 214f);
         if (heavySprites == null) return;
-        Sprite[] blockSprites = ImportFrames(BlockDir, BlockFrames, 214f);
-        if (blockSprites == null) return;
+        Sprite[] guardSprites = ImportFrames(BlockGuardDir, BlockGuardFrames, 214f);
+        if (guardSprites == null) return;
+        Sprite[] hitSprites = ImportFrames(BlockHitDir, BlockHitFrames, 214f);
+        if (hitSprites == null) return;
+        Sprite[] parrySprites = ImportFrames(BlockParryDir, BlockParryFrames, 214f);
+        if (parrySprites == null) return;
 
         AnimationClip idleClip = WriteClip(IdleClipPath, "PlayerIdle", idleSprites, IdleFrameSeconds, true);
         AnimationClip walkClip = WriteClip(WalkClipPath, "PlayerWalk", walkSprites, WalkFrameSeconds, true);
@@ -123,19 +143,22 @@ public static class SpriteAnimSetup
         AnimationClip atk3Clip = WriteClip(Attack3ClipPath, "PlayerAttack3", atk3Sprites, AttackFrameSeconds, false);
         AnimationClip jumpClip = WriteClip(JumpClipPath, "PlayerJump", jumpSprites, JumpFrameSeconds, false);
         AnimationClip heavyClip = WriteClip(HeavyThrustClipPath, "PlayerHeavyThrust", heavySprites, HeavyThrustFrameSeconds, false);
-        AnimationClip blockClip = WriteClip(BlockClipPath, "PlayerBlock", blockSprites, BlockFrameSeconds, false);
+        AnimationClip blockGuardClip = WriteClip(BlockGuardClipPath, "PlayerBlockGuard", guardSprites, BlockGuardFrameSeconds, false);
+        AnimationClip blockHitClip = WriteClip(BlockHitClipPath, "PlayerBlockHit", hitSprites, BlockHitFrameSeconds, false);
+        AnimationClip blockParryClip = WriteClip(BlockParryClipPath, "PlayerParrySuccess", parrySprites, BlockParryFrameSeconds, false);
+        WriteClip(BlockClipPath, "PlayerBlock", guardSprites, BlockGuardFrameSeconds, false);
 
         AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
         if (controller == null)
             controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
-        RebuildLocomotionController(controller, idleClip, walkClip, runClip, dodgeClip, atk1Clip, atk2Clip, atk3Clip, jumpClip, heavyClip, blockClip);
+        RebuildLocomotionController(controller, idleClip, walkClip, runClip, dodgeClip, atk1Clip, atk2Clip, atk3Clip, jumpClip, heavyClip, blockGuardClip, blockHitClip, blockParryClip);
         EditorUtility.SetDirty(controller);
 
         BindPreviewCharacter(controller, idleSprites[0]);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[SpriteAnimSetup] 完成：Idle/Walk/Run/Dodge/Attack1-3/Jump/HeavyThrust/Block。预览 A/D 走，Shift+A/D 跑，W/Up 跳跃，Space 闪避，J 三连斩，K/右键 重刺，F 格挡招架。");
+        Debug.Log("[SpriteAnimSetup] 完成：三种格挡（没挡刀纯姿势/普通格挡微光/完美格挡大特效）及全套动作已编译更新！F:空放格挡, G:普通格挡微光, T:完美格挡大特效。");
     }
 
     static Sprite[] ImportFrames(string dir, string[] names, float pixelsPerUnit)
@@ -202,7 +225,7 @@ public static class SpriteAnimSetup
         return clip;
     }
 
-    static void RebuildLocomotionController(AnimatorController controller, AnimationClip idle, AnimationClip walk, AnimationClip run, AnimationClip dodge, AnimationClip atk1, AnimationClip atk2, AnimationClip atk3, AnimationClip jump, AnimationClip heavy, AnimationClip block)
+    static void RebuildLocomotionController(AnimatorController controller, AnimationClip idle, AnimationClip walk, AnimationClip run, AnimationClip dodge, AnimationClip atk1, AnimationClip atk2, AnimationClip atk3, AnimationClip jump, AnimationClip heavy, AnimationClip blockGuard, AnimationClip blockHit, AnimationClip parrySuccess)
     {
         for (int i = controller.parameters.Length - 1; i >= 0; i--)
             controller.RemoveParameter(i);
@@ -214,6 +237,8 @@ public static class SpriteAnimSetup
         controller.AddParameter("Jump", AnimatorControllerParameterType.Trigger);
         controller.AddParameter("HeavyThrust", AnimatorControllerParameterType.Trigger);
         controller.AddParameter("Block", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("BlockHit", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("ParrySuccess", AnimatorControllerParameterType.Trigger);
         controller.AddParameter("IsGrounded", AnimatorControllerParameterType.Bool);
 
         AnimatorStateMachine sm = controller.layers[0].stateMachine;
@@ -240,8 +265,14 @@ public static class SpriteAnimSetup
         atk3State.motion = atk3;
         AnimatorState heavyState = sm.AddState("HeavyThrust", new Vector3(480f, 260f, 0f));
         heavyState.motion = heavy;
-        AnimatorState blockState = sm.AddState("Block", new Vector3(200f, 260f, 0f));
-        blockState.motion = block;
+
+        // 三种格挡状态
+        AnimatorState blockGuardState = sm.AddState("BlockGuard", new Vector3(200f, 260f, 0f));
+        blockGuardState.motion = blockGuard;
+        AnimatorState blockHitState = sm.AddState("BlockHit", new Vector3(480f, 380f, 0f));
+        blockHitState.motion = blockHit;
+        AnimatorState parrySuccessState = sm.AddState("ParrySuccess", new Vector3(200f, 380f, 0f));
+        parrySuccessState.motion = parrySuccess;
 
         sm.defaultState = idleState;
 
@@ -273,12 +304,26 @@ public static class SpriteAnimSetup
         toHeavy.duration = 0.02f;
         toHeavy.AddCondition(AnimatorConditionMode.If, 0f, "HeavyThrust");
 
-        // AnyState -> Block
-        AnimatorStateTransition toBlock = sm.AddAnyStateTransition(blockState);
-        toBlock.hasExitTime = false;
-        toBlock.hasFixedDuration = true;
-        toBlock.duration = 0.02f;
-        toBlock.AddCondition(AnimatorConditionMode.If, 0f, "Block");
+        // AnyState -> BlockGuard (没挡刀，纯姿势)
+        AnimatorStateTransition toGuard = sm.AddAnyStateTransition(blockGuardState);
+        toGuard.hasExitTime = false;
+        toGuard.hasFixedDuration = true;
+        toGuard.duration = 0.02f;
+        toGuard.AddCondition(AnimatorConditionMode.If, 0f, "Block");
+
+        // AnyState -> BlockHit (普通格挡成功，微弱亮光)
+        AnimatorStateTransition toHit = sm.AddAnyStateTransition(blockHitState);
+        toHit.hasExitTime = false;
+        toHit.hasFixedDuration = true;
+        toHit.duration = 0.02f;
+        toHit.AddCondition(AnimatorConditionMode.If, 0f, "BlockHit");
+
+        // AnyState -> ParrySuccess (完美格挡成功，暴烈大特效)
+        AnimatorStateTransition toParry = sm.AddAnyStateTransition(parrySuccessState);
+        toParry.hasExitTime = false;
+        toParry.hasFixedDuration = true;
+        toParry.duration = 0.02f;
+        toParry.AddCondition(AnimatorConditionMode.If, 0f, "ParrySuccess");
 
         // AnyState -> Attack1
         AnimatorStateTransition toAtk1 = sm.AddAnyStateTransition(atk1State);
@@ -308,12 +353,26 @@ public static class SpriteAnimSetup
         fromHeavy.hasFixedDuration = true;
         fromHeavy.duration = 0.05f;
 
-        // Block -> Idle
-        AnimatorStateTransition fromBlock = blockState.AddTransition(idleState);
-        fromBlock.hasExitTime = true;
-        fromBlock.exitTime = 0.92f;
-        fromBlock.hasFixedDuration = true;
-        fromBlock.duration = 0.05f;
+        // BlockGuard -> Idle
+        AnimatorStateTransition fromGuard = blockGuardState.AddTransition(idleState);
+        fromGuard.hasExitTime = true;
+        fromGuard.exitTime = 0.92f;
+        fromGuard.hasFixedDuration = true;
+        fromGuard.duration = 0.05f;
+
+        // BlockHit -> Idle
+        AnimatorStateTransition fromHit = blockHitState.AddTransition(idleState);
+        fromHit.hasExitTime = true;
+        fromHit.exitTime = 0.90f;
+        fromHit.hasFixedDuration = true;
+        fromHit.duration = 0.05f;
+
+        // ParrySuccess -> Idle
+        AnimatorStateTransition fromParry = parrySuccessState.AddTransition(idleState);
+        fromParry.hasExitTime = true;
+        fromParry.exitTime = 0.92f;
+        fromParry.hasFixedDuration = true;
+        fromParry.duration = 0.05f;
 
         // Jump -> Idle (落地回正)
         AnimatorStateTransition fromJump = jumpState.AddTransition(idleState);
