@@ -31,29 +31,26 @@ public class GameBootstrap : MonoBehaviour
         BuildArena();
 
         // 玩家：青锋剑客
-        CombatActor player = CreateFighter("青锋剑客", true, new Vector2(-10f, 0.1f),
+        CombatActor player = CreateFighter("青锋剑客", true, new Vector2(-4f, 0.1f),
             new Color(0.88f, 0.93f, 0.95f), new Color(0.35f, 0.8f, 0.9f));
         player.maxHP = 100f; player.hp = 100f;
         player.maxChi = 100f; player.chi = 60f;
         player.runSpeed = 5.5f;
         PlayerBrain.Attach(player);
 
-        // 杂兵刀手 ×2
-        CombatActor s1 = CreateFighter("杂兵刀手", false, new Vector2(-2f, 0.1f),
-            new Color(0.45f, 0.32f, 0.26f), new Color(0.7f, 0.3f, 0.2f));
-        s1.maxHP = 36f; s1.hp = 36f; s1.maxPoise = 30f; s1.poise = 30f; s1.runSpeed = 3.2f;
-        s1.brain = new SwordsmanBrain { actor = s1 };
+        // 杂兵刀手 ×2（速度 1.8f 匹配 15 帧行进步伐）
+        CombatActor s1 = CreateFighter("杂兵刀手", false, new Vector2(2f, 0.1f),
+            new Color(0.45f, 0.32f, 0.26f), new Color(0.7f, 0.3f, 0.2f), new SwordsmanBrain());
+        s1.maxHP = 36f; s1.hp = 36f; s1.maxPoise = 30f; s1.poise = 30f; s1.runSpeed = 1.8f;
 
-        CombatActor s2 = CreateFighter("杂兵刀手", false, new Vector2(3f, 0.1f),
-            new Color(0.45f, 0.32f, 0.26f), new Color(0.7f, 0.3f, 0.2f));
-        s2.maxHP = 36f; s2.hp = 36f; s2.maxPoise = 30f; s2.poise = 30f; s2.runSpeed = 3.2f;
-        s2.brain = new SwordsmanBrain { actor = s2 };
+        CombatActor s2 = CreateFighter("杂兵刀手", false, new Vector2(7.5f, 0.1f),
+            new Color(0.45f, 0.32f, 0.26f), new Color(0.7f, 0.3f, 0.2f), new SwordsmanBrain());
+        s2.maxHP = 36f; s2.hp = 36f; s2.maxPoise = 30f; s2.poise = 30f; s2.runSpeed = 1.8f;
 
         // 精英捕头（红甲）
-        CombatActor cap = CreateFighter("精英捕头", false, new Vector2(11f, 0.1f),
-            new Color(0.35f, 0.2f, 0.2f), new Color(0.9f, 0.25f, 0.15f));
+        CombatActor cap = CreateFighter("精英捕头", false, new Vector2(15f, 0.1f),
+            new Color(0.35f, 0.2f, 0.2f), new Color(0.9f, 0.25f, 0.15f), new CaptainBrain());
         cap.maxHP = 150f; cap.hp = 150f; cap.maxPoise = 100f; cap.poise = 100f; cap.runSpeed = 3.6f;
-        cap.brain = new CaptainBrain { actor = cap };
 
         // 镜头
         if (cam != null)
@@ -69,11 +66,16 @@ public class GameBootstrap : MonoBehaviour
         hud.player = player;
     }
 
-    CombatActor CreateFighter(string name, bool isPlayer, Vector2 spawn, Color bodyColor, Color trim)
+    CombatActor CreateFighter(string name, bool isPlayer, Vector2 spawn, Color bodyColor, Color trim, Brain brain = null)
     {
         GameObject go = new GameObject(name);
         CombatActor a = go.AddComponent<CombatActor>();
         a.isPlayer = isPlayer;
+        if (brain != null)
+        {
+            a.brain = brain;
+            brain.actor = a;
+        }
         a.Init(name, isPlayer, spawn, bodyColor, trim);
         CombatDirector.Register(a);
         return a;

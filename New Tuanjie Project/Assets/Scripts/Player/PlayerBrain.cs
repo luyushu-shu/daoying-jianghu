@@ -9,7 +9,7 @@ public class PlayerBrain : Brain
 {
     class Entry { public string action; public int expireFrame; }
     readonly List<Entry> buffer = new List<Entry>();
-    const int BufferFrames = 6;
+    const int BufferFrames = 18; // 300ms 宽松输入缓冲
 
     public static PlayerBrain Attach(CombatActor actor)
     {
@@ -36,8 +36,8 @@ public class PlayerBrain : Brain
     {
         // 持续意图
         float mx = 0f;
-        if (Input.GetKey(KeyCode.A)) mx -= 1f;
-        if (Input.GetKey(KeyCode.D)) mx += 1f;
+        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) mx -= 1f;
+        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) mx += 1f;
         actor.inp.moveX = mx;
         actor.inp.blockHeld = Input.GetKey(KeyCode.F);
         actor.inp.skill2Held = Input.GetKey(KeyCode.I);
@@ -75,16 +75,29 @@ public class PlayerBrain : Brain
         void Update()
         {
             if (CombatDirector.PlayerDead) return;
-            if (Input.GetKeyDown(KeyCode.J)) Brain.Buffer("light");
-            if (Input.GetKeyDown(KeyCode.K)) Brain.Buffer("heavy");
+
+            // 普攻：J 键 或 鼠标左键
+            if (Input.GetKeyDown(KeyCode.J) || Input.GetMouseButtonDown(0)) Brain.Buffer("light");
+
+            // 重击：K 键 或 鼠标右键
+            if (Input.GetKeyDown(KeyCode.K) || Input.GetMouseButtonDown(1)) Brain.Buffer("heavy");
+
+            // 技能：U / I
             if (Input.GetKeyDown(KeyCode.U)) Brain.Buffer("skill1");
             if (Input.GetKeyDown(KeyCode.I)) Brain.Buffer("skill2");
+
+            // 跳跃：W 或 向上方向键
+            if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) Brain.Buffer("jump");
+
+            // 闪避与跳跃：Space 键（按住 W 时为空中轻功，单独按下为翻滚闪避）
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                if (Input.GetKey(KeyCode.W)) Brain.Buffer("jump");
+                if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) Brain.Buffer("jump");
                 else Brain.Buffer("dodge");
             }
-            if (Input.GetKeyDown(KeyCode.LeftShift)) Brain.Buffer("dash");
+
+            // 疾跑冲刺：Shift 键
+            if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift)) Brain.Buffer("dash");
         }
     }
 }

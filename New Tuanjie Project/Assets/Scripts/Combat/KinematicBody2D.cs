@@ -38,12 +38,21 @@ public class KinematicBody2D
         grounded = false;
         if (dy <= 0f)
         {
-            RaycastHit2D hit = Physics2D.BoxCast(Center, size * 0.9f, 0f, Vector2.down, -dy + 0.06f, GroundMask);
+            // 向下探测地面：从脚底上方0.15f发射薄盒探测，向下延伸0.20f - dy
+            Vector2 boxOrigin = pos + new Vector2(0f, 0.15f);
+            Vector2 boxSize = new Vector2(size.x * 0.8f, 0.1f);
+            float castDist = 0.20f - dy;
+            RaycastHit2D hit = Physics2D.BoxCast(boxOrigin, boxSize, 0f, Vector2.down, castDist, GroundMask);
             if (hit.collider != null)
             {
-                pos.y = hit.point.y + 0.001f;
-                vel.y = 0f;
-                grounded = true;
+                float groundY = hit.collider.bounds.max.y;
+                if (pos.y >= groundY - 0.15f && pos.y <= groundY + 0.25f - dy)
+                {
+                    pos.y = groundY;
+                    vel.y = 0f;
+                    grounded = true;
+                }
+                else pos.y += dy;
             }
             else pos.y += dy;
         }
@@ -62,6 +71,8 @@ public class KinematicBody2D
     /// <summary>静止时探测脚下是否仍有地。</summary>
     public bool CheckGround()
     {
-        return Physics2D.BoxCast(Center, size * 0.9f, 0f, Vector2.down, 0.08f, GroundMask).collider != null;
+        Vector2 boxOrigin = pos + new Vector2(0f, 0.15f);
+        Vector2 boxSize = new Vector2(size.x * 0.8f, 0.1f);
+        return Physics2D.BoxCast(boxOrigin, boxSize, 0f, Vector2.down, 0.20f, GroundMask).collider != null;
     }
 }

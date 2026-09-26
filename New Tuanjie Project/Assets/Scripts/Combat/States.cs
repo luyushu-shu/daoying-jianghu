@@ -26,22 +26,28 @@ public class GroundedState : ActorState
         base.Tick();
         if (landRecovery > 0) landRecovery--;
 
-        actor.body.vel.x = actor.inp.moveX * actor.runSpeed;
+        float moveSpeed = actor.runSpeed;
+        if (actor.isPlayer)
+        {
+            bool sprint = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || actor.inp.dash;
+            moveSpeed = sprint ? actor.runSpeed : 1.6f;
+        }
+        actor.body.vel.x = actor.inp.moveX * moveSpeed;
         if (actor.isPlayer && Mathf.Abs(actor.inp.moveX) > 0.01f)
             actor.facing = actor.inp.moveX > 0 ? 1 : -1;
 
-        if (!actor.body.grounded && actor.body.vel.y <= 0f)
+        if (!actor.body.grounded && actor.body.vel.y < -1f)
         {
             actor.ChangeState(new AirborneState(actor, false));
             return;
         }
 
         if (!actor.isPlayer) return;
-        if (landRecovery > 0) return;
 
+        // 允许即时格挡、闪避与攻击
         if (actor.inp.blockHeld) { actor.ChangeState(new BlockState(actor)); return; }
         if (actor.inp.dodge) { actor.Consume("dodge"); actor.ChangeState(new DodgeState(actor, false)); return; }
-        if (actor.inp.jump) { actor.Consume("jump"); actor.ChangeState(new AirborneState(actor, true)); return; }
+        if (actor.inp.jump && landRecovery <= 0) { actor.Consume("jump"); actor.ChangeState(new AirborneState(actor, true)); return; }
         if (actor.inp.dash) { actor.Consume("dash"); actor.ChangeState(new DashState(actor)); return; }
         if (actor.inp.light) { actor.Consume("light"); PlayerChains.StartLight(actor, null); return; }
         if (actor.inp.heavy) { actor.Consume("heavy"); PlayerChains.StartHeavy(actor, null); return; }
@@ -60,7 +66,11 @@ public class AirborneState : ActorState
     public override void Enter()
     {
         base.Enter();
-        if (jumpSquat > 0) actor.body.vel.y = 0f;
+        if (jumpSquat > 0)
+        {
+            actor.body.vel.y = 0f;
+            actor.TriggerAnim("Jump");
+        }
     }
 
     public override void Tick()
@@ -182,6 +192,13 @@ public class AttackState : ActorState
     bool bloomSpent;
     bool landed;
 
+    // 输入预输入与缓冲队列（防止按键吞键、断连段）
+    bool queuedLight;
+    bool queuedHeavy;
+    bool queuedDodge;
+    bool queuedSkill1;
+    bool queuedSkill2;
+
     public AttackState(CombatActor a, MoveData mv) : base(a, mv.id)
     {
         Move = mv;
@@ -207,11 +224,13 @@ public class AttackState : ActorState
         base.Enter();
         actor.chi -= Move.chi;
 
-        // 触发攻击动画（轻击三连斩）
+        // 触发攻击动画（轻击三连斩、重刺与杂兵横斩）
         if (Move.id == "A_L1") actor.TriggerAnim("Attack1");
         else if (Move.id == "A_L2") actor.TriggerAnim("Attack2");
         else if (Move.id == "A_L3") actor.TriggerAnim("Attack3");
-        else actor.TriggerAnim("Attack1");
+        else if (Move.id == "A_H" || Move.id == "A_L2H" || Move.id == "QF-3" || Move.id == "A_DH" || Move.id == "QF-1") actor.TriggerAnim("HeavyThrust");
+        else if (Move.id.StartsWith("E_SWORD_")) actor.TriggerAnim("AttackA");
+        else if (actor.isPlayer) actor.TriggerAnim("Attack1");
 
         // 剑意绽放：该击后摇-4f
         int bloomBonus = (actor.isPlayer && actor.bloomArmed) ? 4 : 0;
@@ -225,6 +244,16 @@ public class AttackState : ActorState
     public override void Tick()
     {
         base.Tick();
+
+        // 持续采录预输入
+        if (actor.isPlayer)
+        {
+            if (actor.inp.light) queuedLight = true;
+            if (actor.inp.heavy) queuedHeavy = true;
+            if (actor.inp.dodge) queuedDodge = true;
+            if (actor.inp.skill1) queuedSkill1 = true;
+            if (actor.inp.skill2) queuedSkill2 = true;
+        }
 
         // 蓄力（一剑霜寒）：按住技能键延长前摇，伤害3.0→3.8
         if (Move.HasTag("chargeable") && Frame >= Move.startup && actor.inp.skill2Held && chargeFrames < 40)
@@ -264,11 +293,61 @@ public class AttackState : ActorState
         if (InActive) DoHitTest(hitSetA);
         if (Move.active2Start > 0 && Frame >= Move.active2Start && Frame <= Move.active2End) DoHitTest(hitSetB);
 
-        // 取消
+        // 取消窗
         if (actor.isPlayer && Move.InCancelWindow(Frame)) TryCancel();
 
+        // 招式动作自然完成
         if (Frame >= totalFrames)
         {
+            if (actor.isPlayer)
+            {
+                // 优先消费排队的闪避
+                if (queuedDodge || actor.inp.dodge)
+                {
+                    queuedDodge = false;
+                    actor.Consume("dodge");
+                    actor.ChangeState(new DodgeState(actor, !actor.body.grounded));
+                    return;
+                }
+                // 技能排队
+                if (queuedSkill1 || actor.inp.skill1)
+                {
+                    queuedSkill1 = false;
+                    actor.Consume("skill1");
+                    PlayerChains.StartSkill(actor, "QF-1");
+                    return;
+                }
+                if (queuedSkill2 || actor.inp.skill2)
+                {
+                    queuedSkill2 = false;
+                    actor.Consume("skill2");
+                    PlayerChains.StartSkill(actor, "QF-3");
+                    return;
+                }
+                // 重击排队（轻二后接重击或重立回）
+                if (queuedHeavy || actor.inp.heavy)
+                {
+                    queuedHeavy = false;
+                    actor.Consume("heavy");
+                    PlayerChains.StartHeavy(actor, Move.id);
+                    return;
+                }
+                // 普攻排队（轻连推进）
+                if (queuedLight || actor.inp.light)
+                {
+                    queuedLight = false;
+                    actor.Consume("light");
+                    PlayerChains.StartLight(actor, Move.id);
+                    return;
+                }
+                // 格挡保持
+                if (actor.inp.blockHeld)
+                {
+                    actor.ChangeState(new BlockState(actor));
+                    return;
+                }
+            }
+
             if (actor.body.grounded) actor.ChangeState(new GroundedState(actor));
             else actor.ChangeState(new AirborneState(actor, false));
         }
@@ -276,11 +355,41 @@ public class AttackState : ActorState
 
     void TryCancel()
     {
-        if (actor.inp.light && Move.CanCancelTo('L')) { actor.Consume("light"); PlayerChains.StartLight(actor, Move.id); return; }
-        if (actor.inp.heavy && Move.CanCancelTo('H')) { actor.Consume("heavy"); PlayerChains.StartHeavy(actor, Move.id); return; }
-        if (actor.inp.dodge && Move.CanCancelTo('D')) { actor.Consume("dodge"); actor.ChangeState(new DodgeState(actor, !actor.body.grounded)); return; }
-        if (actor.inp.skill1 && Move.CanCancelTo('S')) { actor.Consume("skill1"); PlayerChains.StartSkill(actor, "QF-1"); return; }
-        if (actor.inp.skill2 && Move.CanCancelTo('S')) { actor.Consume("skill2"); PlayerChains.StartSkill(actor, "QF-3"); return; }
+        if ((actor.inp.dodge || queuedDodge) && Move.CanCancelTo('D'))
+        {
+            queuedDodge = false;
+            actor.Consume("dodge");
+            actor.ChangeState(new DodgeState(actor, !actor.body.grounded));
+            return;
+        }
+        if ((actor.inp.skill1 || queuedSkill1) && Move.CanCancelTo('S'))
+        {
+            queuedSkill1 = false;
+            actor.Consume("skill1");
+            PlayerChains.StartSkill(actor, "QF-1");
+            return;
+        }
+        if ((actor.inp.skill2 || queuedSkill2) && Move.CanCancelTo('S'))
+        {
+            queuedSkill2 = false;
+            actor.Consume("skill2");
+            PlayerChains.StartSkill(actor, "QF-3");
+            return;
+        }
+        if ((actor.inp.heavy || queuedHeavy) && Move.CanCancelTo('H'))
+        {
+            queuedHeavy = false;
+            actor.Consume("heavy");
+            PlayerChains.StartHeavy(actor, Move.id);
+            return;
+        }
+        if ((actor.inp.light || queuedLight) && Move.CanCancelTo('L'))
+        {
+            queuedLight = false;
+            actor.Consume("light");
+            PlayerChains.StartLight(actor, Move.id);
+            return;
+        }
     }
 
     void DoHitTest(HashSet<CombatActor> hitSet)
@@ -324,6 +433,12 @@ public class BlockState : ActorState
 {
     public BlockState(CombatActor a) : base(a, "Block") { }
 
+    public override void Enter()
+    {
+        base.Enter();
+        actor.TriggerAnim("Block");
+    }
+
     public override void Tick()
     {
         base.Tick();
@@ -344,6 +459,7 @@ public class BlockState : ActorState
             actor.GainIntent(2);
             if (actor.intent >= 3) actor.ArmBloom();
             actor.freezeFrames = Mathf.Max(actor.freezeFrames, 2);
+            actor.TriggerAnim("ParrySuccess");
             CombatDirector.Msg("弹反!", actor.body.pos + new Vector2(0, 2f), new Color(1f, 0.85f, 0.3f), 45);
             CombatDirector.SlowMo(0.6f, 8);
             CombatDirector.Shake(0.18f, 8);
@@ -354,6 +470,7 @@ public class BlockState : ActorState
             actor.freezeFrames = Mathf.Max(actor.freezeFrames, 2);
             if (attacker != null) attacker.freezeFrames = Mathf.Max(attacker.freezeFrames, 2);
             actor.body.vel.x = (attacker != null ? (int)Mathf.Sign(actor.body.pos.x - attacker.body.pos.x) : -actor.facing) * 2f;
+            actor.TriggerAnim("BlockHit");
             CombatDirector.Msg("格挡", actor.body.pos + new Vector2(0, 1.9f), new Color(0.7f, 0.8f, 0.9f), 25);
             if (actor.hp <= 0f) { actor.hp = 0f; actor.Die(); }
         }
@@ -399,10 +516,19 @@ public class DeadState : ActorState
     public override void Tick()
     {
         base.Tick();
-        if (!actor.isPlayer && Frame > 120f)
+        if (!actor.isPlayer)
         {
-            CombatDirector.Unregister(actor);
-            Object.Destroy(actor.gameObject);
+            if (actor.playerSr != null)
+            {
+                Color c = actor.playerSr.color;
+                c.a = Mathf.Max(0f, 1f - (Frame / 80f));
+                actor.playerSr.color = c;
+            }
+            if (Frame > 100)
+            {
+                CombatDirector.Unregister(actor);
+                Object.Destroy(actor.gameObject);
+            }
         }
     }
 }
@@ -425,7 +551,7 @@ public static class PlayerChains
             if (currentId == null) next = "A_L1";
             else if (currentId == "A_L1") next = "A_L2";
             else if (currentId == "A_L2") next = "A_L3";
-            else next = null;
+            else next = "A_L1";
         }
         if (next == null) return;
         MoveData mv = MoveDatabase.Get(next);

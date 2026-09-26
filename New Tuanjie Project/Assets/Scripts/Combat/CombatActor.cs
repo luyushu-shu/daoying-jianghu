@@ -56,8 +56,8 @@ public class CombatActor : MonoBehaviour
     Color baseColor;
     Color trimColor;
     float weaponAngle, weaponLen, weaponAlpha = 0f;
-    Animator playerAnim;
-    SpriteRenderer playerSr;
+    [HideInInspector] public Animator playerAnim;
+    [HideInInspector] public SpriteRenderer playerSr;
 
     public Vector2 FeetPos { get { return body.pos; } }
     public bool Invulnerable
@@ -77,12 +77,18 @@ public class CombatActor : MonoBehaviour
         isPlayer = player;
         body = new KinematicBody2D();
         body.pos = spawn;
+        body.grounded = true;
         hp = maxHP;
         chi = isPlayer ? 60f : 0f;
         poise = maxPoise;
 
         baseColor = bodyColor;
         if (isPlayer && SetupPlayerSprite())
+        {
+            ChangeState(new GroundedState(this));
+            return;
+        }
+        if (!isPlayer && SetupEnemySprite())
         {
             ChangeState(new GroundedState(this));
             return;
@@ -151,15 +157,51 @@ public class CombatActor : MonoBehaviour
     bool SetupPlayerSprite()
     {
         RuntimeAnimatorController ctrl = PlayerVisualLoader.LoadController();
-        if (ctrl == null) return false;
+        if (ctrl == null)
+        {
+            Debug.LogError("[CombatActor] SetupPlayerSprite: PlayerIdle.controller failed to load!");
+            return false;
+        }
 
         playerSr = gameObject.AddComponent<SpriteRenderer>();
         playerSr.sortingOrder = 8;
+#if UNITY_EDITOR
+        playerSr.sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Sprites/Player/Idle/idle-1.png");
+#endif
         playerAnim = gameObject.AddComponent<Animator>();
         playerAnim.runtimeAnimatorController = ctrl;
-        if (GetComponent<CharacterFootskateFix>() == null)
-            gameObject.AddComponent<CharacterFootskateFix>();
+        playerAnim.SetInteger("Character", 0);
+        playerAnim.SetBool("IsGrounded", true);
+        playerAnim.speed = 1.0f;
+        playerAnim.Play("Idle", 0, 0f);
         return true;
+    }
+
+    bool SetupEnemySprite()
+    {
+        if (brain is SwordsmanBrain || (displayName != null && displayName.Contains("刀手")))
+        {
+            RuntimeAnimatorController ctrl = EnemyVisualLoader.LoadSwordsmanController();
+            if (ctrl == null)
+            {
+                Debug.LogError("[CombatActor] SetupEnemySprite: MookSwordsman.controller failed to load!");
+                return false;
+            }
+
+            playerSr = gameObject.AddComponent<SpriteRenderer>();
+            playerSr.sortingOrder = 7;
+#if UNITY_EDITOR
+            playerSr.sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Sprites/Enemies/MookSwordsman/Idle/idle-1.png");
+#endif
+            playerAnim = gameObject.AddComponent<Animator>();
+            playerAnim.runtimeAnimatorController = ctrl;
+            playerAnim.SetInteger("Character", 1);
+            playerAnim.SetBool("IsGrounded", true);
+            playerAnim.speed = 1.0f;
+            playerAnim.Play("Mook_Idle", 0, 0f);
+            return true;
+        }
+        return false;
     }
 
     void Update()
@@ -167,8 +209,22 @@ public class CombatActor : MonoBehaviour
         transform.position = new Vector3(body.pos.x, body.pos.y, 0f);
         if (playerAnim != null)
         {
-            float speed = (state is GroundedState) ? Mathf.Abs(inp.moveX) : 0f;
+            float speed = 0f;
+            if (state is GroundedState && Mathf.Abs(inp.moveX) > 0.05f)
+            {
+                if (isPlayer)
+                {
+                    bool sprint = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || inp.dash;
+                    speed = sprint ? 1.0f : 0.4f; // 0.4f 对应 Walk(慢步走), 1.0f 对应 Run(疾奔)
+                }
+                else
+                {
+                    speed = 0.4f; // 敌人地面移动播放 15 帧行进步伐
+                }
+            }
             playerAnim.SetFloat("Speed", speed);
+            playerAnim.SetBool("IsGrounded", body.grounded);
+            if (isPlayer) playerAnim.SetBool("IsBlocking", state is BlockState);
             if (playerSr != null) playerSr.flipX = facing < 0;
         }
         else
@@ -311,6 +367,19 @@ public class CombatActor : MonoBehaviour
     void Flash(Color c)
     {
         if (bodySr != null) bodySr.color = Color.Lerp(baseColor, c, 0.7f);
+        if (playerSr != null)
+        {
+            StopCoroutine("FlashSpriteRoutine");
+            StartCoroutine("FlashSpriteRoutine", c);
+        }
+    }
+
+    System.Collections.IEnumerator FlashSpriteRoutine(Color c)
+    {
+        if (playerSr == null) yield break;
+        playerSr.color = c;
+        yield return new WaitForSeconds(0.12f);
+        if (playerSr != null) playerSr.color = Color.white;
     }
 
     void UpdateVisual()

@@ -450,8 +450,6 @@ public static class SpriteAnimSetup
         sr.sprite = idleSprite;
         Animator animator = go.GetComponent<Animator>();
         animator.runtimeAnimatorController = controller;
-        if (go.GetComponent<PlayerSpriteLocomotion>() == null)
-            go.AddComponent<PlayerSpriteLocomotion>();
         if (go.GetComponent<CharacterFootskateFix>() == null)
             go.AddComponent<CharacterFootskateFix>();
         FootskateDebugGrid.SpawnIfMissing();
