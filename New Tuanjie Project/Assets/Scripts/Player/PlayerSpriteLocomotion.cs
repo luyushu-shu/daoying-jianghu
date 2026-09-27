@@ -42,7 +42,6 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
     // 破空刺技能帧与状态
     bool isSkillPlaying = false;
-    float skillTimer = 0f;
     Sprite[] pokongciSprites;
     Sprite[] huifengwuSprites;
     string currentActionName = "待机 (Idle)";

@@ -21,7 +21,6 @@ public class MookPreviewActor : MonoBehaviour
     bool isAttacking = false;
     float attackTimer = 0f;
     const float AttackDuration = 0.85f;
-    bool hitFlashedThisAttack = false;
 
     public static void SpawnIfMissing()
     {

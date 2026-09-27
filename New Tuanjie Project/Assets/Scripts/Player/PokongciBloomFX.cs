@@ -337,7 +337,6 @@ public class PokongciBloomFX : MonoBehaviour
 
         // 伴随位移释放 5 道水墨流光残影
         float dashDuration = 0.18f;
-        float dashTimer = 0f;
         int shadowCount = 5;
         for (int s = 0; s < shadowCount; s++)
         {
@@ -805,6 +804,53 @@ public class PokongciBloomFX : MonoBehaviour
                 float d = Vector2.Distance(new Vector2(x, y), new Vector2(cx, cy)) / (w * 0.5f);
                 float a = Mathf.Max(0, 1f - d);
                 cols[y * w + x] = new Color(1f, 1f, 1f, a * a);
+            }
+        }
+        tex.SetPixels(cols);
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
+    }
+    private Sprite CreateCrescentSlash(int w, int h)
+    {
+        Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Bilinear;
+        Color[] cols = new Color[w * h];
+        float cx = w * 0.5f;
+        float cy = h * 0.85f;
+        float radius = w * 0.46f;
+        float thickness = 40f;
+
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                float dx = x - cx;
+                float dy = y - cy;
+                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                float diff = Mathf.Abs(dist - radius);
+
+                if (dy < -2f)
+                {
+                    float ang = Mathf.Atan2(dy, dx);
+                    float t = (ang - (-Mathf.PI * 0.95f)) / (Mathf.PI * 0.90f);
+                    if (t >= 0f && t <= 1f)
+                    {
+                        float taper = Mathf.Pow(Mathf.Sin(t * Mathf.PI), 0.75f);
+                        float curThick = thickness * taper;
+                        if (diff < curThick)
+                        {
+                            float factor = 1f - (diff / curThick);
+                            bool isLeadingEdge = (dist >= radius - 4f) && (dist <= radius + 6f);
+                            Color c = isLeadingEdge
+                                ? Color.white
+                                : Color.Lerp(new Color(0.15f, 0.9f, 1f, 0.95f), new Color(0.04f, 0.08f, 0.12f, 0.85f), (radius - dist) / curThick);
+                            c.a = Mathf.Clamp01(factor * 1.5f);
+                            cols[y * w + x] = c;
+                            continue;
+                        }
+                    }
+                }
+                cols[y * w + x] = Color.clear;
             }
         }
         tex.SetPixels(cols);
