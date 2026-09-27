@@ -45,6 +45,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     [SerializeField] public Sprite[] pokongciSprites;
     [SerializeField] public Sprite[] huifengwuSprites;
     [SerializeField] public Sprite[] yijianshuanghanSprites;
+    [SerializeField] public Sprite[] yijianshuanghanBloomSprites;
     string currentActionName = "待机 (Idle)";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -68,6 +69,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         LoadPokongciSprites();
         LoadHuifengwuSprites();
         LoadYijianshuanghanSprites();
+        LoadYijianshuanghanBloomSprites();
     }
 
     public void LoadYijianshuanghanSprites()
@@ -116,6 +118,55 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         else
         {
             Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 8 Yijianshuanghan sprites from disk (loaded {list.Count}) at {dir}");
+        }
+    }
+
+    public void LoadYijianshuanghanBloomSprites()
+    {
+#if UNITY_EDITOR
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string p = $"Assets/Sprites/Player/Skills/Yijianshuanghan_Bloom/yijianshuanghan-bloom-{i}.png";
+            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+            if (sp != null) list.Add(sp);
+        }
+        if (list.Count >= 8)
+        {
+            yijianshuanghanBloomSprites = list.ToArray();
+            return;
+        }
+#endif
+        LoadYijianshuanghanBloomSpritesFromDisk();
+    }
+
+    void LoadYijianshuanghanBloomSpritesFromDisk()
+    {
+        string dir = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Yijianshuanghan_Bloom");
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string filePath = System.IO.Path.Combine(dir, $"yijianshuanghan-bloom-{i}.png");
+            if (System.IO.File.Exists(filePath))
+            {
+                byte[] bytes = System.IO.File.ReadAllBytes(filePath);
+                Texture2D tex = new Texture2D(680, 480, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Bilinear;
+                if (tex.LoadImage(bytes))
+                {
+                    Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.09f), 214f);
+                    list.Add(sp);
+                }
+            }
+        }
+        if (list.Count >= 8)
+        {
+            yijianshuanghanBloomSprites = list.ToArray();
+            Debug.Log($"[PlayerSpriteLocomotion] Successfully loaded {yijianshuanghanBloomSprites.Length} Yijianshuanghan Bloom sprites directly from disk!");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 8 Yijianshuanghan Bloom sprites from disk (loaded {list.Count}) at {dir}");
         }
     }
 
@@ -875,6 +926,12 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     public void TriggerYijianshuanghan()
     {
         if (isSkillPlaying) return;
+        if (isBloomActive)
+        {
+            TriggerYijianshuanghanBloom();
+            return;
+        }
+
         if (yijianshuanghanSprites == null || yijianshuanghanSprites.Length < 8 || yijianshuanghanSprites[0] == null)
         {
             LoadYijianshuanghanSprites();
@@ -884,17 +941,37 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         comboWindow = 0f;
         blockTimer = 0f;
         dodgeTimer = 0f;
-        StartCoroutine(YijianshuanghanRoutine());
+        StartCoroutine(YijianshuanghanRoutine(false));
     }
 
-    IEnumerator YijianshuanghanRoutine()
+    public void TriggerYijianshuanghanBloom()
+    {
+        if (isSkillPlaying) return;
+        if (yijianshuanghanBloomSprites == null || yijianshuanghanBloomSprites.Length < 8 || yijianshuanghanBloomSprites[0] == null)
+        {
+            LoadYijianshuanghanBloomSprites();
+        }
+        swordIntent = 5;
+        attackStep = 0;
+        attackTimer = 0f;
+        comboWindow = 0f;
+        blockTimer = 0f;
+        dodgeTimer = 0f;
+        StartCoroutine(YijianshuanghanRoutine(true));
+    }
+
+    IEnumerator YijianshuanghanRoutine(bool isBloom)
     {
         isSkillPlaying = true;
-        currentActionName = "一剑霜寒 (Frostbound Slash · 蓄力霜线)";
+        currentActionName = isBloom ? "极·一剑霜寒（绝对霜冻·冰魄玄峰）" : "一剑霜寒 (Frostbound Slash · 蓄力霜线)";
+        if (isBloom) swordIntent = 0;
 
-        if (yijianshuanghanSprites == null || yijianshuanghanSprites.Length < 8 || yijianshuanghanSprites[0] == null)
+        Sprite[] activeSprites = isBloom ? yijianshuanghanBloomSprites : yijianshuanghanSprites;
+        if (activeSprites == null || activeSprites.Length < 8 || activeSprites[0] == null)
         {
-            LoadYijianshuanghanSprites();
+            if (isBloom) LoadYijianshuanghanBloomSprites();
+            else LoadYijianshuanghanSprites();
+            activeSprites = isBloom ? yijianshuanghanBloomSprites : yijianshuanghanSprites;
         }
 
         if (animator != null) animator.enabled = false;
@@ -903,39 +980,40 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         bool origFlip = spriteRenderer != null && spriteRenderer.flipX;
         float faceDir = origFlip ? -1f : 1f;
 
-        if (yijianshuanghanSprites != null && yijianshuanghanSprites.Length >= 8 && yijianshuanghanSprites[0] != null)
+        if (activeSprites != null && activeSprites.Length >= 8 && activeSprites[0] != null)
         {
-            // 8阶段时序：
-            // F1: 结势·冰霜凝聚 (0.10s)
-            // F2: 提剑·寒气汇聚 (0.13s)
-            // F3: 蓄力·冰刃成型 (0.18s)
-            // F4: 斩出·霜寒剑芒 (0.09s, 击中顿帧)
-            // F5: 前刺·冰锋破地 (0.11s, 前冲微位移 0.35m)
-            // F6: 进步·寒气延绵 (0.13s)
-            // F7: 振刃·冰晶碎散 (0.13s)
-            // F8: 入鞘·风息归平 (0.16s)
-            float[] frameDurations = new float[] { 0.10f, 0.13f, 0.18f, 0.09f, 0.11f, 0.13f, 0.13f, 0.16f };
+            float[] frameDurations = isBloom 
+                ? new float[] { 0.12f, 0.14f, 0.18f, 0.10f, 0.12f, 0.16f, 0.14f, 0.18f }
+                : new float[] { 0.10f, 0.13f, 0.18f, 0.09f, 0.11f, 0.13f, 0.13f, 0.16f };
 
             for (int i = 0; i < 8; i++)
             {
                 if (spriteRenderer != null)
                 {
-                    spriteRenderer.sprite = yijianshuanghanSprites[i];
+                    spriteRenderer.sprite = activeSprites[i];
+                    if (isBloom && (i == 2 || i == 3 || i == 4))
+                    {
+                        spriteRenderer.color = new Color(0.75f, 0.95f, 1f, 1f);
+                    }
+                    else
+                    {
+                        spriteRenderer.color = Color.white;
+                    }
                 }
 
                 // F4 斩出瞬间 Hitstop (顿帧)
                 if (i == 3)
                 {
-                    Time.timeScale = 0.25f;
-                    yield return new WaitForSecondsRealtime(0.04f);
+                    Time.timeScale = isBloom ? 0.20f : 0.25f;
+                    yield return new WaitForSecondsRealtime(isBloom ? 0.06f : 0.04f);
                     Time.timeScale = 1.0f;
                 }
 
-                // F5 前刺冲刷微位移
+                // F5 前刺冲刷位移
                 if (i == 4)
                 {
                     Vector3 p = transform.position;
-                    p.x += faceDir * 0.35f;
+                    p.x += faceDir * (isBloom ? 0.55f : 0.35f);
                     transform.position = p;
                 }
 
@@ -968,7 +1046,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         // 仅在独立预览模式下绘制操控面板
         if (combat != null) return;
 
-        GUILayout.BeginArea(new Rect(20, 20, 390, 510), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(20, 20, 430, 520), GUI.skin.box);
         GUILayout.Label("<b><size=15>【刀影江湖 · 青锋动作与技能预览台】</size></b>");
         GUILayout.Space(4);
         GUILayout.Label($"<b>当前动作：</b><color=#00ff88>{currentActionName}</color>");
@@ -1019,12 +1097,17 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.Space(6);
-        GUILayout.Label("<b>--- 技能3：一剑霜寒 (长距离蓄力破防霜线 I) ---</b>");
+        GUILayout.Label("<b>--- 技能3：一剑霜寒 (破防霜线 / 绝对霜冻·冰魄玄峰 I) ---</b>");
         GUILayout.BeginHorizontal();
         GUI.color = new Color(0.45f, 0.85f, 1f);
-        if (GUILayout.Button("一剑霜寒 (8阶段蓄力破防霜线斩 I)", GUILayout.Height(30)))
+        if (GUILayout.Button("一剑霜寒·常态 (8阶段破防霜线)", GUILayout.Height(30)))
         {
-            TriggerYijianshuanghan();
+            StartCoroutine(YijianshuanghanRoutine(false));
+        }
+        GUI.color = new Color(0.3f, 1f, 1f);
+        if (GUILayout.Button("★ 极·冰魄玄峰 (绝对霜冻·万晶爆)", GUILayout.Height(30)))
+        {
+            TriggerYijianshuanghanBloom();
         }
         GUI.color = Color.white;
         GUILayout.EndHorizontal();
