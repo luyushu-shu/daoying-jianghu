@@ -44,6 +44,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     bool isSkillPlaying = false;
     [SerializeField] public Sprite[] pokongciSprites;
     [SerializeField] public Sprite[] huifengwuSprites;
+    [SerializeField] public Sprite[] huifengwuBloomSprites;
     [SerializeField] public Sprite[] yijianshuanghanSprites;
     [SerializeField] public Sprite[] yijianshuanghanBloomSprites;
     string currentActionName = "待机 (Idle)";
@@ -68,6 +69,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         groundY = transform.position.y;
         LoadPokongciSprites();
         LoadHuifengwuSprites();
+        LoadHuifengwuBloomSprites();
         LoadYijianshuanghanSprites();
         LoadYijianshuanghanBloomSprites();
     }
@@ -233,6 +235,55 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         else
         {
             Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 8 Huifengwu sprites from disk (loaded {list.Count}) at {dir}");
+        }
+    }
+
+    public void LoadHuifengwuBloomSprites()
+    {
+#if UNITY_EDITOR
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string p = $"Assets/Sprites/Player/Skills/Huifengwu_Bloom/huifengwu-bloom-{i}.png";
+            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+            if (sp != null) list.Add(sp);
+        }
+        if (list.Count >= 8)
+        {
+            huifengwuBloomSprites = list.ToArray();
+            return;
+        }
+#endif
+        LoadHuifengwuBloomSpritesFromDisk();
+    }
+
+    void LoadHuifengwuBloomSpritesFromDisk()
+    {
+        string dir = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Huifengwu_Bloom");
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string filePath = System.IO.Path.Combine(dir, $"huifengwu-bloom-{i}.png");
+            if (System.IO.File.Exists(filePath))
+            {
+                byte[] bytes = System.IO.File.ReadAllBytes(filePath);
+                Texture2D tex = new Texture2D(680, 480, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Bilinear;
+                if (tex.LoadImage(bytes))
+                {
+                    Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.09f), 214f);
+                    list.Add(sp);
+                }
+            }
+        }
+        if (list.Count >= 8)
+        {
+            huifengwuBloomSprites = list.ToArray();
+            Debug.Log($"[PlayerSpriteLocomotion] Successfully loaded {huifengwuBloomSprites.Length} Huifengwu Bloom sprites directly from disk!");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 8 Huifengwu Bloom sprites from disk (loaded {list.Count}) at {dir}");
         }
     }
 
@@ -810,9 +861,9 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     public void TriggerHuifengwuBloom()
     {
         if (isSkillPlaying) return;
-        if (huifengwuSprites == null || huifengwuSprites.Length < 8 || huifengwuSprites[0] == null)
+        if (huifengwuBloomSprites == null || huifengwuBloomSprites.Length < 8 || huifengwuBloomSprites[0] == null)
         {
-            LoadHuifengwuSprites();
+            LoadHuifengwuBloomSprites();
         }
         swordIntent = 5;
         attackStep = 0;
@@ -829,9 +880,19 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         currentActionName = isBloom ? "剑意·回风舞（青鸾风暴）" : "回风舞 (Whirling Wind Dance)";
         if (isBloom) swordIntent = 0;
 
-        if (huifengwuSprites == null || huifengwuSprites.Length < 8 || huifengwuSprites[0] == null)
+        if (isBloom)
         {
-            LoadHuifengwuSprites();
+            if (huifengwuBloomSprites == null || huifengwuBloomSprites.Length < 8 || huifengwuBloomSprites[0] == null)
+            {
+                LoadHuifengwuBloomSprites();
+            }
+        }
+        else
+        {
+            if (huifengwuSprites == null || huifengwuSprites.Length < 8 || huifengwuSprites[0] == null)
+            {
+                LoadHuifengwuSprites();
+            }
         }
 
         if (animator != null) animator.enabled = false;
@@ -842,7 +903,11 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         Vector3 basePos = transform.position;
         bool origFlip = spriteRenderer != null && spriteRenderer.flipX;
 
-        if (huifengwuSprites != null && huifengwuSprites.Length >= 8 && huifengwuSprites[0] != null)
+        Sprite[] activeSprites = (isBloom && huifengwuBloomSprites != null && huifengwuBloomSprites.Length >= 8 && huifengwuBloomSprites[0] != null)
+            ? huifengwuBloomSprites
+            : huifengwuSprites;
+
+        if (activeSprites != null && activeSprites.Length >= 8 && activeSprites[0] != null)
         {
             // 60 FPS 8阶段完整双手挥剑动作帧时序：
             // F1: 拧腰蓄剑 (attack-5 手臂高提蓄劲)
@@ -867,7 +932,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             {
                 if (spriteRenderer != null)
                 {
-                    spriteRenderer.sprite = huifengwuSprites[i];
+                    spriteRenderer.sprite = activeSprites[i];
                 }
 
                 // F4~F5 微腾空跃起 0.15m~0.25m
