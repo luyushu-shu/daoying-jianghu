@@ -41,6 +41,7 @@ public class PlayerBrain : Brain
         actor.inp.moveX = mx;
         actor.inp.blockHeld = Input.GetKey(KeyCode.F);
         actor.inp.skill2Held = Input.GetKey(KeyCode.I);
+        actor.inp.skill5Held = Input.GetKey(KeyCode.G) || (Input.GetKey(KeyCode.LeftShift) && Input.GetKey(KeyCode.F));
 
         // 缓冲的一次性意图
         for (int i = buffer.Count - 1; i >= 0; i--)
@@ -53,6 +54,10 @@ public class PlayerBrain : Brain
                 case "heavy": actor.inp.heavy = true; break;
                 case "skill1": actor.inp.skill1 = true; break;
                 case "skill2": actor.inp.skill2 = true; break;
+                case "skill3": actor.inp.skill3 = true; break;
+                case "skill4": actor.inp.skill4 = true; break;
+                case "skill5": actor.inp.skill5 = true; break;
+                case "skill6": actor.inp.skill6 = true; break;
                 case "dodge": actor.inp.dodge = true; break;
                 case "jump": actor.inp.jump = true; break;
                 case "dash": actor.inp.dash = true; break;
@@ -82,9 +87,13 @@ public class PlayerBrain : Brain
             // 重击：K 键 或 鼠标右键
             if (Input.GetKeyDown(KeyCode.K) || Input.GetMouseButtonDown(1)) Brain.Buffer("heavy");
 
-            // 技能：U / I
-            if (Input.GetKeyDown(KeyCode.U)) Brain.Buffer("skill1");
-            if (Input.GetKeyDown(KeyCode.I)) Brain.Buffer("skill2");
+            // 技能 1~6：支持 Q/E/R/T/G 以及 U/I/O/P 双模式操作
+            if (Input.GetKeyDown(KeyCode.U) || Input.GetKeyDown(KeyCode.Q)) Brain.Buffer("skill1"); // 破空刺
+            if (Input.GetKeyDown(KeyCode.I)) Brain.Buffer("skill2");                               // 一剑霜寒
+            if (Input.GetKeyDown(KeyCode.O) || Input.GetKeyDown(KeyCode.E)) Brain.Buffer("skill3"); // 回风舞
+            if (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.R)) Brain.Buffer("skill4"); // 御剑飞来
+            if (Input.GetKeyDown(KeyCode.G)) Brain.Buffer("skill5");                               // 以剑御气
+            if (Input.GetKeyDown(KeyCode.T)) Brain.Buffer("skill6");                               // 万剑归宗 (终极奥义)
 
             // 跳跃：W 或 向上方向键
             if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) Brain.Buffer("jump");
@@ -99,5 +108,6 @@ public class PlayerBrain : Brain
             // 疾跑冲刺：Shift 键
             if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift)) Brain.Buffer("dash");
         }
+
     }
 }

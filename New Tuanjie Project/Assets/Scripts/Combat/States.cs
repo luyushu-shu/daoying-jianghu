@@ -53,8 +53,13 @@ public class GroundedState : ActorState
         if (actor.inp.heavy) { actor.Consume("heavy"); PlayerChains.StartHeavy(actor, null); return; }
         if (actor.inp.skill1) { actor.Consume("skill1"); PlayerChains.StartSkill(actor, "QF-1"); return; }
         if (actor.inp.skill2) { actor.Consume("skill2"); PlayerChains.StartSkill(actor, "QF-3"); return; }
+        if (actor.inp.skill3) { actor.Consume("skill3"); PlayerChains.StartSkill(actor, "QF-2"); return; }
+        if (actor.inp.skill4) { actor.Consume("skill4"); PlayerChains.StartSkill(actor, "QF-4"); return; }
+        if (actor.inp.skill5) { actor.Consume("skill5"); PlayerChains.StartSkill(actor, "QF-5"); return; }
+        if (actor.inp.skill6) { actor.Consume("skill6"); PlayerChains.StartSkill(actor, "QF-6"); return; }
     }
 }
+
 
 /// <summary>空中：含起跳深蹲3f与自由下落。</summary>
 public class AirborneState : ActorState
@@ -198,6 +203,10 @@ public class AttackState : ActorState
     bool queuedDodge;
     bool queuedSkill1;
     bool queuedSkill2;
+    bool queuedSkill3;
+    bool queuedSkill4;
+    bool queuedSkill5;
+    bool queuedSkill6;
 
     public AttackState(CombatActor a, MoveData mv) : base(a, mv.id)
     {
@@ -224,11 +233,16 @@ public class AttackState : ActorState
         base.Enter();
         actor.chi -= Move.chi;
 
-        // 触发攻击动画（轻击三连斩、重刺与杂兵横斩）
+        // 触发攻击动画（包含青锋剑术 6 大技能映射）
         if (Move.id == "A_L1") actor.TriggerAnim("Attack1");
         else if (Move.id == "A_L2") actor.TriggerAnim("Attack2");
         else if (Move.id == "A_L3") actor.TriggerAnim("Attack3");
-        else if (Move.id == "A_H" || Move.id == "A_L2H" || Move.id == "QF-3" || Move.id == "A_DH" || Move.id == "QF-1") actor.TriggerAnim("HeavyThrust");
+        else if (Move.id == "A_H" || Move.id == "A_L2H" || Move.id == "A_DH" || Move.id == "QF-1") actor.TriggerAnim("HeavyThrust");
+        else if (Move.id == "QF-2") actor.TriggerAnim("Attack3"); // 回旋旋风舞
+        else if (Move.id == "QF-3") actor.TriggerAnim("HeavyThrust"); // 一剑霜寒
+        else if (Move.id == "QF-4") actor.TriggerAnim("Attack2"); // 剑指御剑
+        else if (Move.id == "QF-5") actor.TriggerAnim("Block");   // 按剑御气立桩
+        else if (Move.id == "QF-6") actor.TriggerAnim("HeavyThrust"); // 万剑归宗引天
         else if (Move.id.StartsWith("E_SWORD_")) actor.TriggerAnim("AttackA");
         else if (actor.isPlayer) actor.TriggerAnim("Attack1");
 
@@ -253,7 +267,12 @@ public class AttackState : ActorState
             if (actor.inp.dodge) queuedDodge = true;
             if (actor.inp.skill1) queuedSkill1 = true;
             if (actor.inp.skill2) queuedSkill2 = true;
+            if (actor.inp.skill3) queuedSkill3 = true;
+            if (actor.inp.skill4) queuedSkill4 = true;
+            if (actor.inp.skill5) queuedSkill5 = true;
+            if (actor.inp.skill6) queuedSkill6 = true;
         }
+
 
         // 蓄力（一剑霜寒）：按住技能键延长前摇，伤害3.0→3.8
         if (Move.HasTag("chargeable") && Frame >= Move.startup && actor.inp.skill2Held && chargeFrames < 40)
@@ -309,7 +328,7 @@ public class AttackState : ActorState
                     actor.ChangeState(new DodgeState(actor, !actor.body.grounded));
                     return;
                 }
-                // 技能排队
+                // 技能排队 (QF-1 ~ QF-6)
                 if (queuedSkill1 || actor.inp.skill1)
                 {
                     queuedSkill1 = false;
@@ -324,6 +343,35 @@ public class AttackState : ActorState
                     PlayerChains.StartSkill(actor, "QF-3");
                     return;
                 }
+                if (queuedSkill3 || actor.inp.skill3)
+                {
+                    queuedSkill3 = false;
+                    actor.Consume("skill3");
+                    PlayerChains.StartSkill(actor, "QF-2");
+                    return;
+                }
+                if (queuedSkill4 || actor.inp.skill4)
+                {
+                    queuedSkill4 = false;
+                    actor.Consume("skill4");
+                    PlayerChains.StartSkill(actor, "QF-4");
+                    return;
+                }
+                if (queuedSkill5 || actor.inp.skill5)
+                {
+                    queuedSkill5 = false;
+                    actor.Consume("skill5");
+                    PlayerChains.StartSkill(actor, "QF-5");
+                    return;
+                }
+                if (queuedSkill6 || actor.inp.skill6)
+                {
+                    queuedSkill6 = false;
+                    actor.Consume("skill6");
+                    PlayerChains.StartSkill(actor, "QF-6");
+                    return;
+                }
+
                 // 重击排队（轻二后接重击或重立回）
                 if (queuedHeavy || actor.inp.heavy)
                 {
@@ -577,11 +625,35 @@ public static class PlayerChains
     {
         MoveData mv = MoveDatabase.Get(id);
         if (mv == null) return;
+
+        // 终极奥义：万剑归宗 (QF-6) 需剑意达到 5 层巅峰
+        if (id == "QF-6")
+        {
+            if (a.intent < 5 && !a.bloomArmed)
+            {
+                CombatDirector.Msg("剑意未至巅峰 (需5层)", a.body.pos + new Vector2(0, 1.9f), new Color(0.6f, 0.95f, 1f), 45);
+                return;
+            }
+            a.intent = 0;
+            a.ArmBloom();
+            CombatDirector.Shake(0.35f, 16);
+            CombatDirector.Msg("万剑归宗 · 剑意巅峰!", a.body.pos + new Vector2(0, 2.2f), new Color(0.85f, 0.95f, 1f), 60);
+        }
+
+        // 剑意绽放状态下施放任何技能
+        if (a.bloomArmed)
+        {
+            CombatDirector.Msg("【剑意绽放 · 强化】", a.body.pos + new Vector2(0, 2.0f), new Color(0.4f, 0.95f, 1f), 40);
+            CombatDirector.Shake(0.18f, 8);
+        }
+
         if (a.chi < mv.chi)
         {
             CombatDirector.Msg("内力不足", a.body.pos + new Vector2(0, 1.9f), new Color(0.5f, 0.7f, 1f), 30);
             return;
         }
+
         a.ChangeState(new AttackState(a, mv));
     }
 }
+
