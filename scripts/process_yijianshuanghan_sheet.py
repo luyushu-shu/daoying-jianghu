@@ -199,7 +199,7 @@ def process_all_frames():
     dark_strip.paste(strip, (0, 0), strip)
     dark_strip.save(os.path.join(SKILL_DIR, "yijianshuanghan-darkbg-preview.png"))
     
-    # Transparent Animated GIF
+    # Transparent Animated GIF with high color fidelity
     # Realistic 60 FPS timings:
     # F1=100ms, F2=130ms, F3=180ms (charge), F4=90ms (slash), F5=110ms (ice surge),
     # F6=130ms (recovery lock), F7=130ms (shatter), F8=160ms (sheathe)
@@ -207,12 +207,29 @@ def process_all_frames():
     
     gif_frames = []
     for (idx, cname, std_name, fr), dur in zip(processed_frames, frame_durations):
-        alpha = fr.split()[3]
-        mask = Image.eval(alpha, lambda a: 255 if a > 25 else 0)
-        p_frame = fr.convert('RGB').convert('P', palette=Image.ADAPTIVE, colors=255)
+        # 1. Clean alpha for 1-bit GIF transparency
+        arr = np.array(fr)
+        alpha = arr[..., 3]
+        trans_mask = alpha < 40
+        arr[trans_mask] = [0, 0, 0, 0]
+        arr[~trans_mask, 3] = 255
+        clean_rgba = Image.fromarray(arr, 'RGBA')
         
-        final_gif_fr = Image.new('P', p_frame.size, 255)
-        final_gif_fr.paste(p_frame, (0, 0), mask)
+        # 2. Quantize RGB to 255 colors (MEDIANCUT)
+        rgb_img = clean_rgba.convert('RGB')
+        p_img = rgb_img.quantize(colors=255, method=Image.MEDIANCUT)
+        
+        # 3. Build 256-color palette reserving index 255 for transparency
+        palette = list(p_img.getpalette())
+        while len(palette) < 256 * 3:
+            palette.extend([0, 0, 0])
+        palette[255 * 3 : 255 * 3 + 3] = [0, 0, 0]
+        
+        p_data = np.array(p_img)
+        p_data[trans_mask] = 255
+        
+        final_gif_fr = Image.fromarray(p_data, mode='P')
+        final_gif_fr.putpalette(palette)
         final_gif_fr.info['transparency'] = 255
         gif_frames.append(final_gif_fr)
         
@@ -231,7 +248,127 @@ def process_all_frames():
             disposal=2,
             transparency=255
         )
-    print(f"Animated GIF updated successfully.")
+    print("Animated GIF updated successfully with full 255-color fidelity!")
+
+    # Generate Unity .meta files for Unity Assets
+    import uuid
+    for i in range(1, 9):
+        png_path = os.path.join(UNITY_DIR, f"yijianshuanghan-{i}.png")
+        meta_path = png_path + ".meta"
+        if not os.path.exists(meta_path):
+            guid = uuid.uuid5(uuid.NAMESPACE_DNS, f"yijianshuanghan-{i}").hex
+            sprite_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"yijianshuanghan-sp-{i}").hex
+            content = f"""fileFormatVersion: 2
+guid: {guid}
+TextureImporter:
+  internalIDToNameTable: []
+  externalObjects: {{}}
+  serializedVersion: 14
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  webStreaming: 0
+  priorityLevel: 0
+  uploadedMode: 2
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 0
+    wrapV: 0
+    wrapW: 0
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 9
+  spritePivot: {{x: 0.5, y: 0.09}}
+  spritePixelsToUnits: 214
+  spriteBorder: {{x: 0, y: 0, z: 0, w: 0}}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 3
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    maxPlaceholderSize: 32
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID: {sprite_id}
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    nameFileIdTable: {{}}
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  doOverrideTextureManagerOperations: 0
+  platformOperationGroupSettings: 
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+"""
+            with open(meta_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            print(f"Generated meta: {meta_path}")
 
 if __name__ == '__main__':
     process_all_frames()
