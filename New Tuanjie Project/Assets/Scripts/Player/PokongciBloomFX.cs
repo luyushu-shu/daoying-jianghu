@@ -36,6 +36,7 @@ public class PokongciBloomFX : MonoBehaviour
     private Sprite frostDecalSprite;
     private Sprite spatialRiftSprite;
     private Sprite particleDotSprite;
+    private Sprite crescentSlashSprite;
     private Material additiveMat;
 
     void Awake()
@@ -65,7 +66,10 @@ public class PokongciBloomFX : MonoBehaviour
         spatialRiftSprite = CreateSpatialRift(512, 48);
 
         // 7. 发光星尘粒子
-        particleDotSprite = CreateParticleDot(32, 32);
+                particleDotSprite = CreateParticleDot(32, 32);
+
+        // 8. 狂草残月剑芒 (Crescent Blade Slash)
+        crescentSlashSprite = CreateCrescentSlash(512, 256);
 
         // 查找或创建通用材质
         Shader s = Shader.Find("Sprites/Default");
@@ -119,103 +123,154 @@ public class PokongciBloomFX : MonoBehaviour
 
     private IEnumerator HuifengwuRoutine(Transform caster, bool isBloom)
     {
-        Vector3 center = caster.position + new Vector3(0, 0.45f, 0);
-        float radiusScale = isBloom ? 1.6f : 1.0f;
+        Vector3 center = caster.position + new Vector3(0, 0.55f, 0);
+        float radiusScale = isBloom ? 1.5f : 1.0f;
 
-        // 1. 地面旋转水墨风磨盘贴花
-        GameObject groundDecal = new GameObject("VFX_Huifengwu_Ground");
-        groundDecal.transform.position = caster.position;
-        groundDecal.transform.localScale = new Vector3(radiusScale * 1.4f, 0.5f, 1f);
-        SpriteRenderer gSr = groundDecal.AddComponent<SpriteRenderer>();
-        gSr.sprite = shockwaveSprite;
-        gSr.color = isBloom ? new Color(0.1f, 0.9f, 1f, 0.9f) : new Color(0.1f, 0.7f, 0.9f, 0.75f);
-        gSr.sortingOrder = 4;
-        StartCoroutine(FadeAndDestroy(groundDecal, isBloom ? 0.8f : 0.5f));
+        // 阶段 1：剑尖蓄势寒芒 (F1)
+        GameObject glintF1 = new GameObject("VFX_SwordGlint_F1");
+        glintF1.transform.position = center + new Vector3(0.35f, -0.2f, 0);
+        glintF1.transform.localScale = Vector3.one * (0.8f * radiusScale);
+        SpriteRenderer glintSr = glintF1.AddComponent<SpriteRenderer>();
+        glintSr.sprite = starburstSprite;
+        glintSr.color = Color.white;
+        glintSr.sortingOrder = 22;
+        StartCoroutine(FadeAndDestroy(glintF1, 0.12f));
 
-        // 2. 双层水平与交错旋转剑轮
-        GameObject ring1 = new GameObject("VFX_BladeRing_1");
-        ring1.transform.position = center;
-        SpriteRenderer r1Sr = ring1.AddComponent<SpriteRenderer>();
-        r1Sr.sprite = shockwaveSprite;
-        r1Sr.color = Color.white;
-        r1Sr.sortingOrder = 17;
-        ring1.transform.localScale = Vector3.one * (0.8f * radiusScale);
+        yield return new WaitForSeconds(0.06f);
 
-        GameObject ring2 = new GameObject("VFX_BladeRing_2");
-        ring2.transform.position = center;
-        SpriteRenderer r2Sr = ring2.AddComponent<SpriteRenderer>();
-        r2Sr.sprite = shockwaveSprite;
-        r2Sr.color = isBloom ? new Color(1f, 0.95f, 0.4f, 0.9f) : new Color(0.2f, 0.95f, 1f, 0.9f);
-        r2Sr.sortingOrder = 18;
-        ring2.transform.localScale = Vector3.one * (1.1f * radiusScale);
+        // 阶段 2：初斩残月剑幕 (F3) —— 凌厉横斩月牙刀芒，呼啸破空！
+        SpawnCrescentSlash(center, 0f, new Vector2(2.4f * radiusScale, 1.4f * radiusScale),
+            isBloom ? new Color(0.3f, 1f, 1f, 0.95f) : new Color(0.5f, 0.95f, 1f, 0.9f), 0.16f);
+        SpawnSwordStar(center + new Vector3(0.9f * radiusScale, 0, 0), 1.2f * radiusScale, 0.14f);
+        SpawnSlashSparks(center, 14, 1.2f * radiusScale, isBloom);
+        TriggerCameraShake(isBloom ? 0.15f : 0.08f, 0.06f);
 
-        // 3. 伴随旋转的螺旋风刃与离心星尘
-        float spinDuration = isBloom ? 0.45f : 0.30f;
-        float elapsed = 0f;
-        int hitPulses = isBloom ? 5 : 2;
-        float pulseInterval = spinDuration / hitPulses;
-        float nextPulse = 0.05f;
+        yield return new WaitForSeconds(isBloom ? 0.08f : 0.10f);
 
-        while (elapsed < spinDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / spinDuration;
-
-            // 剑轮动态膨胀与自旋
-            ring1.transform.localScale = Vector3.Lerp(Vector3.one * 0.6f * radiusScale, Vector3.one * 1.5f * radiusScale, t);
-            ring2.transform.localScale = Vector3.Lerp(Vector3.one * 0.8f * radiusScale, Vector3.one * 1.8f * radiusScale, t);
-            ring1.transform.Rotate(0, 0, 1800f * Time.deltaTime);
-            ring2.transform.Rotate(0, 0, -1800f * Time.deltaTime);
-
-            r1Sr.color = new Color(1f, 1f, 1f, 1f - t);
-            r2Sr.color = new Color(r2Sr.color.r, r2Sr.color.g, r2Sr.color.b, 1f - t);
-
-            // 离心喷溅星尘
-            if (Random.value < 0.6f)
-            {
-                SpawnStardustParticle(center + (Vector3)Random.insideUnitCircle * (0.8f * radiusScale));
-            }
-
-            // 多段命中顿挫
-            if (elapsed >= nextPulse)
-            {
-                TriggerCameraShake(isBloom ? 0.22f : 0.12f, 0.08f);
-                nextPulse += pulseInterval;
-            }
-
-            yield return null;
-        }
-
-        Destroy(ring1);
-        Destroy(ring2);
-
-        // 4. 刹车定格：外扩冲击波大爆发
-        GameObject shock = new GameObject("VFX_BrakeShockwave");
-        shock.transform.position = center;
-        SpriteRenderer sSr = shock.AddComponent<SpriteRenderer>();
-        sSr.sprite = shockwaveSprite;
-        sSr.color = isBloom ? new Color(0.2f, 0.95f, 1f, 0.95f) : new Color(0.4f, 0.8f, 1f, 0.8f);
-        sSr.sortingOrder = 20;
-        StartCoroutine(ExpandAndFade(shock, sSr, 0.25f, 3.2f * radiusScale));
+        // 阶段 3：双重残月交错绝杀 (F5) —— 水平与斜切双道斩芒暴烈交叠！
+        SpawnCrescentSlash(center, -8f, new Vector2(2.6f * radiusScale, 1.5f * radiusScale),
+            Color.white, 0.18f);
+        SpawnCrescentSlash(center, 38f, new Vector2(2.3f * radiusScale, 1.4f * radiusScale),
+            isBloom ? new Color(1f, 0.92f, 0.35f, 0.95f) : new Color(0.3f, 1f, 0.95f, 0.9f), 0.18f);
+        
+        // 交错核心爆鸣星芒
+        SpawnSwordStar(center + new Vector3(0.6f * radiusScale, 0.1f, 0), 1.6f * radiusScale, 0.18f);
+        SpawnSlashSparks(center, 24, 1.6f * radiusScale, isBloom);
+        TriggerCameraShake(isBloom ? 0.28f : 0.15f, 0.10f);
 
         if (isBloom)
         {
-            // 强化版中心爆开极光十字星芒
-            GameObject star = new GameObject("VFX_BloomStar");
-            star.transform.position = center;
-            SpriteRenderer starSr = star.AddComponent<SpriteRenderer>();
-            starSr.sprite = starburstSprite;
-            starSr.color = Color.white;
-            starSr.sortingOrder = 22;
-            StartCoroutine(FadeAndScale(star, starSr, 0.35f, 2.4f));
-            TriggerCameraShake(0.35f, 0.16f);
+            // 强化青鸾风暴：额外 3 道高速残月回旋绞杀连击
+            for (int b = 0; b < 3; b++)
+            {
+                yield return new WaitForSeconds(0.05f);
+                float angle = -30f + b * 45f;
+                SpawnCrescentSlash(center, angle, new Vector2(2.5f * radiusScale, 1.3f * radiusScale),
+                    new Color(0.4f, 1f, 1f, 0.9f), 0.14f);
+                SpawnSlashSparks(center, 12, 1.4f * radiusScale, true);
+                TriggerCameraShake(0.18f, 0.04f);
+            }
+        }
+
+        yield return new WaitForSeconds(0.08f);
+
+        // 阶段 4：侧步插剑定地裂痕 (F6) —— 剑尖重插地面，锐利剑劲左右平射！
+        Vector3 groundTip = caster.position + new Vector3(0.35f, 0.02f, 0);
+        GameObject groundCrack = new GameObject("VFX_GroundSwordShock");
+        groundCrack.transform.position = groundTip;
+        groundCrack.transform.localScale = new Vector3(2.5f * radiusScale, 0.35f, 1f);
+        SpriteRenderer gcSr = groundCrack.AddComponent<SpriteRenderer>();
+        gcSr.sprite = frostDecalSprite;
+        gcSr.color = isBloom ? new Color(0.3f, 1f, 1f, 0.9f) : new Color(0.6f, 0.95f, 1f, 0.8f);
+        gcSr.sortingOrder = 15;
+        StartCoroutine(FadeAndDestroy(groundCrack, 0.35f));
+
+        // 落地星火
+        SpawnSwordStar(groundTip, 1.0f * radiusScale, 0.15f);
+    }
+
+    private void SpawnCrescentSlash(Vector3 pos, float angleDeg, Vector2 scale, Color color, float life)
+    {
+        GameObject slash = new GameObject("VFX_CrescentSlash");
+        slash.transform.position = pos;
+        slash.transform.rotation = Quaternion.Euler(0, 0, angleDeg);
+        slash.transform.localScale = scale * 0.7f;
+        SpriteRenderer sr = slash.AddComponent<SpriteRenderer>();
+        sr.sprite = crescentSlashSprite != null ? crescentSlashSprite : voidConeSprite;
+        sr.color = color;
+        sr.sortingOrder = 20;
+
+        StartCoroutine(AnimateCrescentSlash(slash, scale, life));
+    }
+
+    private IEnumerator AnimateCrescentSlash(GameObject slash, Vector2 targetScale, float life)
+    {
+        float elapsed = 0f;
+        Vector2 startScale = targetScale * 0.75f;
+        SpriteRenderer sr = slash.GetComponent<SpriteRenderer>();
+        Color startCol = sr.color;
+
+        while (elapsed < life)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / life;
+            slash.transform.localScale = Vector2.Lerp(startScale, targetScale * 1.15f, Mathf.Sqrt(t));
+            sr.color = new Color(startCol.r, startCol.g, startCol.b, Mathf.Lerp(startCol.a, 0f, t * t));
+            yield return null;
+        }
+        Destroy(slash);
+    }
+
+    private void SpawnSwordStar(Vector3 pos, float scale, float life)
+    {
+        GameObject star = new GameObject("VFX_SwordStar");
+        star.transform.position = pos;
+        star.transform.localScale = Vector3.one * scale;
+        SpriteRenderer sr = star.AddComponent<SpriteRenderer>();
+        sr.sprite = starburstSprite;
+        sr.color = Color.white;
+        sr.sortingOrder = 22;
+        StartCoroutine(FadeAndDestroy(star, life));
+    }
+
+    private void SpawnSlashSparks(Vector3 center, int count, float radius, bool isBloom)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            GameObject spark = new GameObject("VFX_SlashSpark");
+            spark.transform.position = center + (Vector3)(Random.insideUnitCircle * 0.35f);
+            spark.transform.localScale = Vector3.one * Random.Range(0.4f, 0.9f);
+            SpriteRenderer sr = spark.AddComponent<SpriteRenderer>();
+            sr.sprite = particleDotSprite;
+            sr.color = isBloom && Random.value > 0.5f
+                ? new Color(1f, 0.95f, 0.4f, 1f)
+                : (Random.value > 0.4f ? Color.white : new Color(0.2f, 0.95f, 1f, 1f));
+            sr.sortingOrder = 21;
+
+            Vector2 dir = Random.insideUnitCircle.normalized;
+            float spd = Random.Range(3.5f, 7.5f);
+            StartCoroutine(AnimateSpark(spark, dir * spd, Random.Range(0.12f, 0.22f)));
         }
     }
 
-    /// <summary>
-    /// 触发破空刺·剑意绽放全套特效
-    /// </summary>
-    public void PlayBloomEffect(Transform caster, bool flipX, Vector3 startPos, Vector3 endPos, Sprite casterSprite)
+    private IEnumerator AnimateSpark(GameObject spark, Vector2 vel, float life)
+    {
+        float elapsed = 0f;
+        SpriteRenderer sr = spark.GetComponent<SpriteRenderer>();
+        Color startCol = sr.color;
+
+        while (elapsed < life)
+        {
+            elapsed += Time.deltaTime;
+            spark.transform.position += (Vector3)(vel * Time.deltaTime);
+            float t = elapsed / life;
+            sr.color = new Color(startCol.r, startCol.g, startCol.b, 1f - t);
+            yield return null;
+        }
+        Destroy(spark);
+    }
+
+        public void PlayBloomEffect(Transform caster, bool flipX, Vector3 startPos, Vector3 endPos, Sprite casterSprite)
     {
         StartCoroutine(BloomSequenceRoutine(caster, flipX, startPos, endPos, casterSprite));
     }

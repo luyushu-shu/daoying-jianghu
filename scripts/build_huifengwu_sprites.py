@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
 """
 Generate and Export Qingfeng Swordsman Skill 2: 回风舞 (Whirling Wind Dance, QF-2 / QF-2E)
-8-Frame Sequential Sprites Aligned to 680x480, PPU 214, Feet Anchor Y=437.
+V2 Redesign: Calligraphy Sword Slashes & Blade Light (狂草剑意·残月斩·剑尖寒芒)
+NO tornado/cyclone hoops. Authentic Guofeng Wuxia aesthetics.
 
 Features:
-- Anatomical and martial arts adherence to '设计/刀影江湖-回风舞动作帧设计表.md':
-  F1: 拧腰抱剑 (Coil & Sinking)
-  F2: 旋足踏风 (Pivot & Wind Swirl)
-  F3: 剑轮初开 (Active 1 / First Whirlwind Slash)
-  F4: 顺风展袖 (Mid-Spin Flow)
-  F5: 双层风暴 (Active 2 / Dual Storm Whirlwind)
-  F6: 侧步插剑 (Side-Step Brake)
-  F7: 挽花收剑 (Wrist Flourish)
-  F8: 拂袖敛意 (Neutral Stance)
-- Procedural multi-layer martial-arts VFX:
-  - Ground ink vortex decal (水墨磨盘阵)
-  - 360° horizontal and diagonal cyan-white blade rings (双层风暴剑轮)
-  - Helical wind streamers and ink splatter debris (24风旋墨雨)
-  - Ground brake shockwave (踏地定风冲击波)
-  - Dissipating sword intent motes (剑气余韵光粒)
-- Exports transparent individual PNGs, sequence strip, and high-fidelity transparent GIF.
+- Pure martial-arts swordcraft visual language:
+  - F1: 剑尖蓄势寒芒 (Cold blade aura, glinting starburst at tip, subtle flowing chill)
+  - F2: 旋身撩剑弧光 (Upward whipping calligraphy crescent trail with trailing ink droplets)
+  - F3: 凌厉残月横斩 (Massive razor-sharp horizontal crescent slash with white cutting edge & ink tail)
+  - F4: 展袖流光换势 (Graceful flowing ribbon arching high as hands transition)
+  - F5: 双重残月交错重斩 (Fierce dual intersecting crescent slashes with blazing impact burst)
+  - F6: 剑尖定地剑劲裂痕 (Sword tip planted in ground with linear ink-shock split and ground sparks)
+  - F7: 腕花飞星墨韵 (Elegant figure-8 wrist flick sword ribbon with fading sparks)
+  - F8: 剑身收敛寒光 (Serene cold gleam along the polished steel blade returning to neutral)
+- Strict engine alignment: Canvas 680x480, PPU 214, Feet Anchor Y=437, Center X=340.
+- Exports transparent individual PNGs, sequence strip, and halo-free transparent GIF.
 """
 
 import os
@@ -63,224 +59,281 @@ def align_body_to_canvas(img_path, target_feet_y=TARGET_FEET_Y, center_x=CENTER_
     canvas.paste(raw, (shift_x, shift_y), raw)
     return canvas
 
-def draw_ground_vortex(canvas, intensity=1.0, radius=90, rot_angle=0.0):
-    """Draw procedural ground ink vortex decal beneath feet at Y=437."""
-    overlay = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    cx, cy = CENTER_X, TARGET_FEET_Y - 4
-    
-    # Draw nested swirling ink rings with squashed perspective (flattened ellipse)
-    for r in range(int(radius * 0.3), int(radius), 8):
-        box = (cx - r, cy - int(r * 0.28), cx + r, cy + int(r * 0.28))
-        a = int(50 * intensity * (1.0 - r / radius))
-        # Ink black rim
-        draw.arc(box, start=int(rot_angle), end=int(rot_angle + 270), fill=(18, 24, 30, a), width=3)
-        # Faint cyan glow inside
-        if r % 16 == 0:
-            draw.arc(box, start=int(rot_angle + 90), end=int(rot_angle + 340), fill=(46, 229, 212, int(a * 0.7)), width=2)
-            
-    overlay = overlay.filter(ImageFilter.GaussianBlur(1.5))
-    return Image.alpha_composite(canvas, overlay)
-
-def draw_blade_ring(canvas, cx, cy, rx, ry, tilt_deg=0.0, intensity=1.0, start_deg=0, sweep_deg=360):
-    """Draw a 360° sweeping cyan-white blade ring with glowing core and ink trail."""
+def draw_sword_star_glint(canvas, gx, gy, size=24, intensity=1.0, color_glow=(46, 229, 212)):
+    """Draw a blazing 4-point cross starburst at the sword tip."""
     overlay = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     
-    # Outer ink brush wash (dark teal/black)
-    outer_box = (cx - rx, cy - ry, cx + rx, cy + ry)
-    ink_alpha = int(140 * intensity)
-    draw.arc(outer_box, start=start_deg, end=start_deg + sweep_deg, fill=(17, 35, 42, ink_alpha), width=14)
+    # 4-point cross star
+    # Horizontal long ray
+    hl = size * 1.5
+    draw.line([(gx - hl, gy), (gx + hl, gy)], fill=(255, 255, 255, int(255 * intensity)), width=2)
+    # Vertical ray
+    vl = size * 1.0
+    draw.line([(gx, gy - vl), (gx, gy + vl)], fill=(255, 255, 255, int(255 * intensity)), width=2)
     
-    # Cyan outer energy aura (#2EE5D4)
-    cyan_alpha = int(220 * intensity)
-    draw.arc(outer_box, start=start_deg + 15, end=start_deg + sweep_deg - 5, fill=(46, 229, 212, cyan_alpha), width=8)
+    # Diagonal subtle rays
+    dl = size * 0.6
+    draw.line([(gx - dl, gy - dl), (gx + dl, gy + dl)], fill=(color_glow[0], color_glow[1], color_glow[2], int(180 * intensity)), width=1)
+    draw.line([(gx - dl, gy + dl), (gx + dl, gy - dl)], fill=(color_glow[0], color_glow[1], color_glow[2], int(180 * intensity)), width=1)
     
-    # Bright white core razor line (#FFFFFF)
-    white_alpha = int(255 * intensity)
-    draw.arc(outer_box, start=start_deg + 30, end=start_deg + sweep_deg - 10, fill=(255, 255, 255, white_alpha), width=3)
+    # Central diamond
+    cr = size * 0.35
+    draw.polygon([(gx - cr, gy), (gx, gy - cr), (gx + cr, gy), (gx, gy + cr)], fill=(255, 255, 255, 255))
     
-    # If tilted, rotate the overlay around (cx, cy)
-    if abs(tilt_deg) > 0.1:
-        overlay = overlay.rotate(-tilt_deg, center=(cx, cy), resample=Image.BICUBIC)
-        
-    blurred_glow = overlay.filter(ImageFilter.GaussianBlur(2.0))
-    result = Image.alpha_composite(canvas, blurred_glow)
-    result = Image.alpha_composite(result, overlay)
-    return result
-
-def draw_wind_swirls(canvas, cx, cy, count=12, intensity=1.0, seed=42):
-    """Draw spiraling wind streamers and ink splatter motes."""
-    np.random.seed(seed)
-    overlay = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    
-    for _ in range(count):
-        # Parametric logarithmic spiral arc
-        angle0 = np.random.uniform(0, 2 * math.pi)
-        r0 = np.random.uniform(20, 80)
-        pts = []
-        for step in range(8):
-            theta = angle0 + step * 0.25
-            r = r0 + step * 14
-            px = cx + r * math.cos(theta) * 1.3
-            py = cy + r * math.sin(theta) * 0.65 - step * 5
-            pts.append((px, py))
-            
-        a = int(np.random.uniform(100, 200) * intensity)
-        color = (46, 229, 212, a) if np.random.rand() > 0.4 else (18, 24, 32, int(a * 1.2))
-        if len(pts) > 1:
-            draw.line(pts, fill=color, width=np.random.randint(2, 4))
-            
-        # Splatter droplet at tip
-        tip_x, tip_y = pts[-1]
-        rad = np.random.randint(2, 5)
-        draw.ellipse((tip_x - rad, tip_y - rad, tip_x + rad, tip_y + rad), fill=color)
-        
-    blurred = overlay.filter(ImageFilter.GaussianBlur(1.0))
-    return Image.alpha_composite(canvas, blurred)
-
-def draw_shockwave_brake(canvas, cx, cy, radius=180, intensity=1.0):
-    """Draw expanding ground brake shockwave ring for Frame 6."""
-    overlay = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    
-    # Horizontal flattened shock ring on floor
-    box = (cx - radius, cy - int(radius * 0.22), cx + radius, cy + int(radius * 0.22))
-    draw.ellipse(box, outline=(46, 229, 212, int(180 * intensity)), width=5)
-    
-    inner_box = (cx - int(radius * 0.9), cy - int(radius * 0.20), cx + int(radius * 0.9), cy + int(radius * 0.20))
-    draw.ellipse(inner_box, outline=(255, 255, 255, int(220 * intensity)), width=2)
-    
-    # Ground dust / ink splash rays
-    for i in range(16):
-        ang = i * (math.pi / 8)
-        rx = cx + math.cos(ang) * radius
-        ry = cy + math.sin(ang) * (radius * 0.22)
-        draw.line([(cx + math.cos(ang) * (radius * 0.7), cy + math.sin(ang) * (radius * 0.16)), (rx, ry)],
-                  fill=(18, 28, 36, int(150 * intensity)), width=3)
-        
-    blurred = overlay.filter(ImageFilter.GaussianBlur(2.0))
-    res = Image.alpha_composite(canvas, blurred)
+    # Outer cyan halo
+    glow = overlay.filter(ImageFilter.GaussianBlur(3.0))
+    res = Image.alpha_composite(canvas, glow)
     res = Image.alpha_composite(res, overlay)
     return res
 
-def draw_residual_motes(canvas, cx, cy, count=16, intensity=1.0, seed=101):
-    """Draw soft dissipating sword intent particles and ink wisps for Recovery."""
+def draw_crescent_slash(canvas, cx, cy, radius, y_squash=0.45, start_angle=-2.8, sweep=3.0,
+                        tilt_deg=0.0, width=42, intensity=1.0, add_ink_tail=True):
+    """Draw an organic calligraphy crescent sword slash (thick body, needle ends, white razor edge, ink plume)."""
+    overlay = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    
+    steps = 45
+    angles = np.linspace(start_angle, start_angle + sweep, steps)
+    
+    # 1. Trailing ink plume (behind the blade)
+    if add_ink_tail:
+        pts_ink_out = []
+        pts_ink_in = []
+        for a in angles:
+            t = (a - angles[0]) / (angles[-1] - angles[0])
+            w = (math.sin(t * math.pi) ** 0.65) * (width * 1.4)
+            ro = radius + w * 0.35
+            ri = radius - w * 0.75
+            pts_ink_out.append((cx + ro * math.cos(a), cy + ro * math.sin(a) * y_squash))
+            pts_ink_in.append((cx + ri * math.cos(a), cy + ri * math.sin(a) * y_squash))
+        poly_ink = pts_ink_out + pts_ink_in[::-1]
+        if len(poly_ink) > 3:
+            draw.polygon(poly_ink, fill=(16, 24, 30, int(150 * intensity)))
+            
+    # 2. Glowing Cyan blade wave
+    pts_cyan_out = []
+    pts_cyan_in = []
+    for a in angles:
+        t = (a - angles[0]) / (angles[-1] - angles[0])
+        w = (math.sin(t * math.pi) ** 0.75) * (width * 0.85)
+        ro = radius + w * 0.25
+        ri = radius - w * 0.75
+        pts_cyan_out.append((cx + ro * math.cos(a), cy + ro * math.sin(a) * y_squash))
+        pts_cyan_in.append((cx + ri * math.cos(a), cy + ri * math.sin(a) * y_squash))
+    poly_cyan = pts_cyan_out + pts_cyan_in[::-1]
+    if len(poly_cyan) > 3:
+        draw.polygon(poly_cyan, fill=(46, 229, 212, int(220 * intensity)))
+        
+    # 3. Razor-sharp white cutting edge (leading arc)
+    pts_white = []
+    for a in angles:
+        t = (a - angles[0]) / (angles[-1] - angles[0])
+        ro = radius + ((math.sin(t * math.pi) ** 0.75) * (width * 0.25))
+        pts_white.append((cx + ro * math.cos(a), cy + ro * math.sin(a) * y_squash))
+    if len(pts_white) > 1:
+        draw.line(pts_white, fill=(255, 255, 255, int(255 * intensity)), width=3)
+        
+    # Rotate if tilted
+    if abs(tilt_deg) > 0.1:
+        overlay = overlay.rotate(-tilt_deg, center=(cx, cy), resample=Image.BICUBIC)
+        
+    glow = overlay.filter(ImageFilter.GaussianBlur(2.5))
+    res = Image.alpha_composite(canvas, glow)
+    res = Image.alpha_composite(res, overlay)
+    return res
+
+def draw_ink_flecks_and_sparks(canvas, cx, cy, count=16, radius=180, spread_angle=(-0.5, 0.5), intensity=1.0, seed=42):
+    """Draw dynamic ink flecks and sword sparks thrown along the cutting direction."""
     np.random.seed(seed)
     overlay = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     
     for _ in range(count):
-        px = cx + np.random.uniform(-140, 140)
-        py = cy + np.random.uniform(-180, 40)
-        sz = np.random.uniform(1.5, 4.0)
-        a = int(np.random.uniform(60, 160) * intensity)
-        c = (255, 255, 255, a) if np.random.rand() > 0.5 else (46, 229, 212, a)
-        draw.ellipse((px - sz, py - sz, px + sz, py + sz), fill=c)
+        ang = np.random.uniform(spread_angle[0], spread_angle[1])
+        dist = np.random.uniform(radius * 0.7, radius * 1.3)
+        px = cx + math.cos(ang) * dist
+        py = cy + math.sin(ang) * (dist * 0.45)
         
-    blurred = overlay.filter(ImageFilter.GaussianBlur(1.2))
-    return Image.alpha_composite(canvas, blurred)
+        # Lengthened spark / streak
+        length = np.random.uniform(4, 12)
+        dx = math.cos(ang + 0.3) * length
+        dy = math.sin(ang + 0.3) * (length * 0.45)
+        
+        is_spark = np.random.rand() > 0.4
+        color = (255, 255, 255, int(220 * intensity)) if np.random.rand() > 0.6 else (46, 229, 212, int(200 * intensity))
+        if not is_spark:
+            color = (18, 26, 32, int(180 * intensity))
+            
+        draw.line([(px, py), (px + dx, py + dy)], fill=color, width=np.random.randint(1, 3))
+        
+    glow = overlay.filter(ImageFilter.GaussianBlur(1.2))
+    res = Image.alpha_composite(canvas, glow)
+    res = Image.alpha_composite(res, overlay)
+    return res
 
-def build_all_frames():
-    print("=== Generating Qingfeng Skill 2: 回风舞 (8 Sequential Frames) ===")
+def draw_sword_blade_sheen(canvas, x1, y1, x2, y2, intensity=1.0):
+    """Draw a clean cold steel gleam along the blade edge."""
+    overlay = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
     
-    # Pose sources from Player animation library
+    # Cyan aura around steel
+    draw.line([(x1, y1), (x2, y2)], fill=(46, 229, 212, int(160 * intensity)), width=5)
+    # White cutting spine
+    draw.line([(x1, y1), (x2, y2)], fill=(255, 255, 255, int(240 * intensity)), width=2)
+    
+    glow = overlay.filter(ImageFilter.GaussianBlur(2.0))
+    res = Image.alpha_composite(canvas, glow)
+    res = Image.alpha_composite(res, overlay)
+    return res
+
+def draw_ground_sword_shock(canvas, tip_x, tip_y, intensity=1.0):
+    """Draw linear ground-cleaving shock lines bursting outward from sword tip planted on ground (Frame 6)."""
+    overlay = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    
+    # Sharp linear split along ground floor
+    draw.line([(tip_x - 140, tip_y), (tip_x + 140, tip_y)], fill=(46, 229, 212, int(200 * intensity)), width=4)
+    draw.line([(tip_x - 100, tip_y), (tip_x + 100, tip_y)], fill=(255, 255, 255, int(240 * intensity)), width=2)
+    
+    # Vertical bursting needle sparks
+    for dx, h in [(-90, 18), (-50, 30), (-15, 45), (15, 40), (60, 25), (95, 16)]:
+        draw.line([(tip_x + dx, tip_y), (tip_x + dx * 1.1, tip_y - h)], fill=(255, 255, 255, int(200 * intensity)), width=2)
+        # Ink fleck at tip
+        draw.ellipse([(tip_x + dx * 1.1 - 2, tip_y - h - 2), (tip_x + dx * 1.1 + 2, tip_y - h + 2)], fill=(18, 26, 32, 180))
+        
+    glow = overlay.filter(ImageFilter.GaussianBlur(2.0))
+    res = Image.alpha_composite(canvas, glow)
+    res = Image.alpha_composite(res, overlay)
+    return res
+
+def build_all_frames_v2():
+    print("=== Generating Qingfeng Skill 2: 回风舞 (V2 Calligraphy Sword Slashes) ===")
+    
     P_HT = os.path.join(PROJECT_ROOT, "New Tuanjie Project", "Assets", "Sprites", "Player", "HeavyThrust")
     P_ATK = os.path.join(PROJECT_ROOT, "New Tuanjie Project", "Assets", "Sprites", "Player", "Attack")
     P_DODGE = os.path.join(PROJECT_ROOT, "New Tuanjie Project", "Assets", "Sprites", "Player", "Dodge")
     P_JUMP = os.path.join(PROJECT_ROOT, "New Tuanjie Project", "Assets", "Sprites", "Player", "Jump")
     
     frame_defs = [
-        # (index, chinese_name, english_role, source_path, flip_x, vfx_func)
-        (1, "01_拧腰抱剑", "Coil & Sinking", os.path.join(P_HT, "heavy-1.png"), False, "vfx_f1"),
-        (2, "02_旋足踏风", "Pivot & Swirl", os.path.join(P_DODGE, "dodge-7.png"), False, "vfx_f2"),
-        (3, "03_剑轮初开", "Active 1 Slash", os.path.join(P_ATK, "attack-11.png"), False, "vfx_f3"),
-        (4, "04_顺风展袖", "Mid-Spin Flow", os.path.join(P_JUMP, "jump-4.png"), False, "vfx_f4"),
-        (5, "05_双层风暴", "Active 2 Whirlwind", os.path.join(P_ATK, "attack-10.png"), False, "vfx_f5"),
-        (6, "06_侧步插剑", "Side-Step Brake", os.path.join(P_HT, "heavy-6.png"), False, "vfx_f6"),
-        (7, "07_挽花收剑", "Wrist Flourish", os.path.join(P_HT, "heavy-7.png"), False, "vfx_f7"),
-        (8, "08_拂袖敛意", "Neutral Return", os.path.join(P_HT, "heavy-8.png"), False, "vfx_f8"),
+        (1, "01_拧腰抱剑", "Coil & Sinking", os.path.join(P_HT, "heavy-1.png")),
+        (2, "02_旋足踏风", "Pivot & Swirl", os.path.join(P_DODGE, "dodge-7.png")),
+        (3, "03_剑轮初开", "Active 1 Slash", os.path.join(P_ATK, "attack-11.png")),
+        (4, "04_顺风展袖", "Mid-Spin Flow", os.path.join(P_JUMP, "jump-4.png")),
+        (5, "05_双层风暴", "Active 2 Whirlwind", os.path.join(P_ATK, "attack-10.png")),
+        (6, "06_侧步插剑", "Side-Step Brake", os.path.join(P_HT, "heavy-6.png")),
+        (7, "07_挽花收剑", "Wrist Flourish", os.path.join(P_HT, "heavy-7.png")),
+        (8, "08_拂袖敛意", "Neutral Return", os.path.join(P_HT, "heavy-8.png")),
     ]
     
     generated_frames = []
     
-    for idx, cname, ename, src_path, flip, vfx_type in frame_defs:
-        print(f"Building Frame {idx}: {cname} ({ename})...")
+    for idx, cname, ename, src_path in frame_defs:
+        print(f"Crafting Frame {idx}: {cname} ({ename})...")
         
-        # 1. Base canvas with background VFX
-        frame = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
+        # Background VFX layer (behind the swordsman)
+        bg_vfx = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
+        # Foreground VFX layer (in front of the swordsman / directly on the sword)
+        fg_vfx = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
         
-        # Background VFX layer
-        if vfx_type == "vfx_f1":
-            frame = draw_ground_vortex(frame, intensity=0.7, radius=80, rot_angle=20)
-        elif vfx_type == "vfx_f2":
-            frame = draw_ground_vortex(frame, intensity=0.9, radius=110, rot_angle=60)
-            frame = draw_wind_swirls(frame, CENTER_X, TARGET_FEET_Y - 120, count=8, intensity=0.8, seed=20)
-        elif vfx_type == "vfx_f3":
-            frame = draw_ground_vortex(frame, intensity=1.1, radius=140, rot_angle=120)
-            # Full 360° horizontal whirlwind blade ring (radius 220px = 1.0m+ in canvas)
-            frame = draw_blade_ring(frame, cx=CENTER_X, cy=TARGET_FEET_Y - 130, rx=230, ry=58, tilt_deg=2.0, intensity=1.2, start_deg=10, sweep_deg=340)
-            frame = draw_wind_swirls(frame, CENTER_X, TARGET_FEET_Y - 130, count=16, intensity=1.1, seed=33)
-        elif vfx_type == "vfx_f4":
-            frame = draw_ground_vortex(frame, intensity=0.8, radius=110, rot_angle=180)
-            # Diagonal shifting blade ribbon
-            frame = draw_blade_ring(frame, cx=CENTER_X - 10, cy=TARGET_FEET_Y - 150, rx=190, ry=50, tilt_deg=-15.0, intensity=0.9, start_deg=30, sweep_deg=280)
-            frame = draw_wind_swirls(frame, CENTER_X, TARGET_FEET_Y - 150, count=12, intensity=0.9, seed=44)
-        elif vfx_type == "vfx_f5":
-            frame = draw_ground_vortex(frame, intensity=1.3, radius=160, rot_angle=240)
-            # Dual-layer storm: horizontal ring + 35° diagonal intersecting ring!
-            frame = draw_blade_ring(frame, cx=CENTER_X, cy=TARGET_FEET_Y - 135, rx=245, ry=62, tilt_deg=4.0, intensity=1.4, start_deg=0, sweep_deg=360)
-            frame = draw_blade_ring(frame, cx=CENTER_X, cy=TARGET_FEET_Y - 150, rx=220, ry=56, tilt_deg=35.0, intensity=1.3, start_deg=20, sweep_deg=320)
-            frame = draw_wind_swirls(frame, CENTER_X, TARGET_FEET_Y - 140, count=24, intensity=1.4, seed=55)
-        elif vfx_type == "vfx_f6":
-            # Expanding floor brake shockwave
-            frame = draw_shockwave_brake(frame, cx=CENTER_X, cy=TARGET_FEET_Y - 6, radius=210, intensity=1.2)
-            frame = draw_residual_motes(frame, CENTER_X, TARGET_FEET_Y - 100, count=14, intensity=1.0, seed=66)
-        elif vfx_type == "vfx_f7":
-            # Wrist flourish circular ink ribbon
-            frame = draw_blade_ring(frame, cx=CENTER_X + 20, cy=TARGET_FEET_Y - 120, rx=90, ry=28, tilt_deg=-10.0, intensity=0.8, start_deg=40, sweep_deg=260)
-            frame = draw_residual_motes(frame, CENTER_X, TARGET_FEET_Y - 110, count=18, intensity=0.8, seed=77)
-        elif vfx_type == "vfx_f8":
-            # Dissipating faint sparks
-            frame = draw_residual_motes(frame, CENTER_X, TARGET_FEET_Y - 120, count=8, intensity=0.4, seed=88)
+        if idx == 1:
+            # F1: 拧腰抱剑 —— 剑尖蓄势寒芒，剑身冷冽流光，地面微起水墨游龙丝
+            # 剑身流光 (位于身前持剑斜下处)
+            fg_vfx = draw_sword_blade_sheen(fg_vfx, x1=355, y1=260, x2=450, y2=330, intensity=1.0)
+            # 剑尖寒芒星爆
+            fg_vfx = draw_sword_star_glint(fg_vfx, gx=455, gy=335, size=22, intensity=1.2)
             
-        # 2. Character Body Layer
-        body = align_body_to_canvas(src_path, target_feet_y=TARGET_FEET_Y, center_x=CENTER_X, flip_x=flip)
-        
-        # Composite body over background VFX
-        composite = Image.alpha_composite(frame, body)
-        
-        # Foreground VFX overlay (cutting blade highlights on top of body)
-        fg = Image.new('RGBA', (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
-        if vfx_type == "vfx_f3":
-            fg = draw_blade_ring(fg, cx=CENTER_X, cy=TARGET_FEET_Y - 130, rx=230, ry=58, tilt_deg=2.0, intensity=0.8, start_deg=160, sweep_deg=160)
-        elif vfx_type == "vfx_f5":
-            fg = draw_blade_ring(fg, cx=CENTER_X, cy=TARGET_FEET_Y - 135, rx=245, ry=62, tilt_deg=4.0, intensity=1.0, start_deg=150, sweep_deg=180)
-            fg = draw_blade_ring(fg, cx=CENTER_X, cy=TARGET_FEET_Y - 150, rx=220, ry=56, tilt_deg=35.0, intensity=0.9, start_deg=140, sweep_deg=160)
-        elif vfx_type == "vfx_f7":
-            fg = draw_blade_ring(fg, cx=CENTER_X + 20, cy=TARGET_FEET_Y - 120, rx=90, ry=28, tilt_deg=-10.0, intensity=0.6, start_deg=150, sweep_deg=120)
+        elif idx == 2:
+            # F2: 旋足踏风 —— 旋身反手撩剑，剑锋拉出一道潇洒向上的月牙墨光
+            # 剑光弧光 (自下而上扬起)
+            bg_vfx = draw_crescent_slash(bg_vfx, cx=340, cy=270, radius=160, y_squash=0.6,
+                                         start_angle=-0.8, sweep=1.9, tilt_deg=25.0, width=32, intensity=0.95)
+            # 剑尖飞溅墨点与星屑
+            fg_vfx = draw_ink_flecks_and_sparks(fg_vfx, cx=410, cy=210, count=10, radius=60,
+                                               spread_angle=(-0.6, 0.4), intensity=0.9, seed=12)
+            # 剑尖寒芒
+            fg_vfx = draw_sword_star_glint(fg_vfx, gx=415, gy=205, size=20, intensity=1.0)
             
-        final_frame = Image.alpha_composite(composite, fg)
+        elif idx == 3:
+            # F3: 剑轮初开 —— 凌厉残月横斩！横扫半屏的锋利月牙剑芒与飞白泼墨
+            # 巨大横斩残月弧光 (水平横扫 180度，厚实墨色背尾，白热切割前锋)
+            bg_vfx = draw_crescent_slash(bg_vfx, cx=340, cy=300, radius=235, y_squash=0.38,
+                                         start_angle=-2.9, sweep=2.9, tilt_deg=-3.0, width=48, intensity=1.3)
+            # 前景斩击飞刃与暴风墨点
+            fg_vfx = draw_crescent_slash(fg_vfx, cx=340, cy=300, radius=235, y_squash=0.38,
+                                         start_angle=-0.8, sweep=1.0, tilt_deg=-3.0, width=48, intensity=1.2)
+            fg_vfx = draw_ink_flecks_and_sparks(fg_vfx, cx=530, cy=290, count=20, radius=90,
+                                               spread_angle=(-0.4, 0.6), intensity=1.2, seed=31)
+            # 刀锋最前沿锐利星芒
+            fg_vfx = draw_sword_star_glint(fg_vfx, gx=560, gy=295, size=28, intensity=1.4)
+            
+        elif idx == 4:
+            # F4: 顺风展袖 —— 凌空展袖换势，飘逸高位剑痕
+            bg_vfx = draw_crescent_slash(bg_vfx, cx=335, cy=240, radius=185, y_squash=0.55,
+                                         start_angle=-2.2, sweep=2.0, tilt_deg=-20.0, width=34, intensity=0.9)
+            fg_vfx = draw_ink_flecks_and_sparks(fg_vfx, cx=380, cy=180, count=12, radius=70,
+                                               spread_angle=(-0.5, 0.5), intensity=0.85, seed=42)
+            fg_vfx = draw_sword_star_glint(fg_vfx, gx=390, gy=175, size=22, intensity=1.1)
+            
+        elif idx == 5:
+            # F5: 双层风暴 —— 双重残月交错斩 (双道凌厉斩击相交，狂暴水墨飞星，高燃爆发)
+            # 斩击 1: 强横水平大残月
+            bg_vfx = draw_crescent_slash(bg_vfx, cx=340, cy=295, radius=245, y_squash=0.40,
+                                         start_angle=-3.0, sweep=3.1, tilt_deg=2.0, width=52, intensity=1.4)
+            # 斩击 2: 凌空怒斩斜向残月 (与水平残月形成凌厉交错 X 斩)
+            bg_vfx = draw_crescent_slash(bg_vfx, cx=340, cy=275, radius=215, y_squash=0.50,
+                                         start_angle=-2.4, sweep=2.5, tilt_deg=38.0, width=46, intensity=1.3)
+            # 前景交差点破裂强光
+            fg_vfx = draw_crescent_slash(fg_vfx, cx=340, cy=295, radius=245, y_squash=0.40,
+                                         start_angle=-0.6, sweep=1.0, tilt_deg=2.0, width=52, intensity=1.3)
+            # 交错中心爆发核心剑芒 (位于身前右侧交汇处)
+            fg_vfx = draw_sword_star_glint(fg_vfx, gx=490, gy=285, size=36, intensity=1.6)
+            # 狂草泼墨与碎星雨
+            fg_vfx = draw_ink_flecks_and_sparks(fg_vfx, cx=490, cy=285, count=28, radius=120,
+                                               spread_angle=(-1.2, 1.2), intensity=1.4, seed=57)
+            
+        elif idx == 6:
+            # F6: 侧步插剑 —— 剑尖重插于地，笔锋顿止！地面撕裂出直线青墨剑劲与纵向锐芒
+            # 剑身流光
+            fg_vfx = draw_sword_blade_sheen(fg_vfx, x1=335, y1=280, x2=450, y2=432, intensity=1.2)
+            # 地面剑尖入地爆破冲击
+            fg_vfx = draw_ground_sword_shock(fg_vfx, tip_x=450, tip_y=434, intensity=1.3)
+            fg_vfx = draw_sword_star_glint(fg_vfx, gx=450, gy=433, size=24, intensity=1.4)
+            
+        elif idx == 7:
+            # F7: 挽花收剑 —— 剑腕顺势轻挽，一道精致的 8 字形水墨剑花在身侧翻卷收回
+            fg_vfx = draw_crescent_slash(fg_vfx, cx=385, cy=315, radius=85, y_squash=0.7,
+                                         start_angle=-1.5, sweep=2.4, tilt_deg=-15.0, width=22, intensity=0.85, add_ink_tail=False)
+            fg_vfx = draw_sword_star_glint(fg_vfx, gx=425, gy=290, size=18, intensity=1.0)
+            fg_vfx = draw_ink_flecks_and_sparks(fg_vfx, cx=420, cy=300, count=8, radius=50,
+                                               spread_angle=(-1.0, 1.0), intensity=0.7, seed=73)
+            
+        elif idx == 8:
+            # F8: 拂袖敛意 —— 剑身收敛寒光，秋水无波，纯粹冷钢剑刃微光，平滑归位
+            fg_vfx = draw_sword_blade_sheen(fg_vfx, x1=340, y1=280, x2=410, y2=370, intensity=0.7)
+            fg_vfx = draw_sword_star_glint(fg_vfx, gx=410, gy=370, size=14, intensity=0.8)
+
+        # Composite: Background VFX -> Body -> Foreground VFX
+        body = align_body_to_canvas(src_path, target_feet_y=TARGET_FEET_Y, center_x=CENTER_X)
+        composite = Image.alpha_composite(bg_vfx, body)
+        final_frame = Image.alpha_composite(composite, fg_vfx)
+        
         generated_frames.append((idx, cname, final_frame))
         
-        # Save individual PNGs into all target directories
+        # Save individual PNGs
         fn_std = f"huifengwu-{idx}.png"
         fn_named = f"{cname}.png"
         fn_aligned = f"aligned_{cname}.png"
         
-        # Unity project folder
         final_frame.save(os.path.join(UNITY_DIR, fn_std))
         final_frame.save(os.path.join(UNITY_DIR, fn_named))
-        
-        # Design folders
         final_frame.save(os.path.join(CLEAN_DIR, fn_std))
         final_frame.save(os.path.join(CLEAN_DIR, fn_named))
         final_frame.save(os.path.join(CLEAN_DIR, fn_aligned))
         final_frame.save(os.path.join(SKILL_DIR, fn_std))
         final_frame.save(os.path.join(SKILL_DIR, fn_named))
 
-    # 3. Build Sequence Strip (8 frames side by side: 5440 x 480)
+    # Build Sequence Strip (5440 x 480)
     strip_w = CANVAS_W * len(generated_frames)
     strip = Image.new('RGBA', (strip_w, CANVAS_H), (0, 0, 0, 0))
     for idx, cname, fr in generated_frames:
@@ -289,18 +342,13 @@ def build_all_frames():
     strip.save(os.path.join(UNITY_DIR, "huifengwu-sequence.png"))
     strip.save(os.path.join(SKILL_DIR, "huifengwu-sequence.png"))
     strip.save(os.path.join(CLEAN_DIR, "huifengwu-sequence.png"))
-    print(f"Sequence strip saved: {strip.size}")
+    print(f"Sequence strip updated: {strip.size}")
 
-    # 4. Build Transparent Animated GIF with zero halos
-    # Frame durations in ms corresponding to 60 FPS design table:
-    # F1 (4f -> 70ms), F2 (5f -> 85ms), F3 (4f -> 70ms), F4 (3f -> 50ms),
-    # F5 (4f -> 70ms), F6 (5f -> 85ms), F7 (5f -> 85ms), F8 (6f -> 100ms)
+    # Build Transparent Animated GIF
     durations = [70, 85, 70, 50, 70, 85, 85, 100]
-    
     gif_frames = []
     for idx, cname, fr in generated_frames:
         c_data = np.array(fr)
-        # Transparent mask
         trans_mask = c_data[:, :, 3] < 80
         c_data[trans_mask] = [0, 0, 0, 0]
         c_data[~trans_mask, 3] = 255
@@ -321,11 +369,9 @@ def build_all_frames():
         final_gif_fr.info['transparency'] = 255
         gif_frames.append(final_gif_fr)
 
-    gif_path_unity = os.path.join(UNITY_DIR, "huifengwu-animation.gif")
-    gif_path_skill = os.path.join(SKILL_DIR, "huifengwu-animation.gif")
-    gif_path_clean = os.path.join(CLEAN_DIR, "huifengwu-animation.gif")
-    
-    for gpath in [gif_path_unity, gif_path_skill, gif_path_clean]:
+    for gpath in [os.path.join(UNITY_DIR, "huifengwu-animation.gif"),
+                  os.path.join(SKILL_DIR, "huifengwu-animation.gif"),
+                  os.path.join(CLEAN_DIR, "huifengwu-animation.gif")]:
         gif_frames[0].save(
             gpath,
             save_all=True,
@@ -335,8 +381,7 @@ def build_all_frames():
             transparency=255,
             disposal=2
         )
-    print("All GIFs generated successfully!")
-    print("=== All 8 Huifengwu frames and sequences generated perfectly! ===")
+    print("=== All 8 V2 Huifengwu frames and sequences successfully generated! ===")
 
 if __name__ == '__main__':
-    build_all_frames()
+    build_all_frames_v2()
