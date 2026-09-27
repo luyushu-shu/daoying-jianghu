@@ -42,8 +42,8 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
     // 破空刺技能帧与状态
     bool isSkillPlaying = false;
-    Sprite[] pokongciSprites;
-    Sprite[] huifengwuSprites;
+    [SerializeField] public Sprite[] pokongciSprites;
+    [SerializeField] public Sprite[] huifengwuSprites;
     string currentActionName = "待机 (Idle)";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -85,7 +85,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 #endif
     }
 
-    void LoadHuifengwuSprites()
+    public void LoadHuifengwuSprites()
     {
 #if UNITY_EDITOR
         List<Sprite> list = new List<Sprite>();
@@ -95,11 +95,43 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
             if (sp != null) list.Add(sp);
         }
-        if (list.Count > 0)
+        if (list.Count >= 8)
         {
             huifengwuSprites = list.ToArray();
+            return;
         }
 #endif
+        LoadHuifengwuSpritesFromDisk();
+    }
+
+    void LoadHuifengwuSpritesFromDisk()
+    {
+        string dir = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Huifengwu");
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string filePath = System.IO.Path.Combine(dir, $"huifengwu-{i}.png");
+            if (System.IO.File.Exists(filePath))
+            {
+                byte[] bytes = System.IO.File.ReadAllBytes(filePath);
+                Texture2D tex = new Texture2D(680, 480, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Bilinear;
+                if (tex.LoadImage(bytes))
+                {
+                    Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.09f), 214f);
+                    list.Add(sp);
+                }
+            }
+        }
+        if (list.Count >= 8)
+        {
+            huifengwuSprites = list.ToArray();
+            Debug.Log($"[PlayerSpriteLocomotion] Successfully loaded {huifengwuSprites.Length} Huifengwu sprites directly from disk!");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 8 Huifengwu sprites from disk (loaded {list.Count}) at {dir}");
+        }
     }
 
     void Update()
@@ -647,6 +679,10 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     public void TriggerHuifengwu()
     {
         if (isSkillPlaying) return;
+        if (huifengwuSprites == null || huifengwuSprites.Length < 8 || huifengwuSprites[0] == null)
+        {
+            LoadHuifengwuSprites();
+        }
         attackStep = 0;
         attackTimer = 0f;
         comboWindow = 0f;
@@ -665,6 +701,10 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     public void TriggerHuifengwuBloom()
     {
         if (isSkillPlaying) return;
+        if (huifengwuSprites == null || huifengwuSprites.Length < 8 || huifengwuSprites[0] == null)
+        {
+            LoadHuifengwuSprites();
+        }
         swordIntent = 5;
         attackStep = 0;
         attackTimer = 0f;
@@ -680,25 +720,30 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         currentActionName = isBloom ? "剑意·回风舞（青鸾风暴）" : "回风舞 (Whirling Wind Dance)";
         if (isBloom) swordIntent = 0;
 
+        if (huifengwuSprites == null || huifengwuSprites.Length < 8 || huifengwuSprites[0] == null)
+        {
+            LoadHuifengwuSprites();
+        }
+
         if (animator != null) animator.enabled = false;
 
-        // 触发回风舞专属特效（风暴旋涡、刀轮与粒子）
+        // 触发回风舞专属特效（月牙斩芒、交错斩光与剑尖星爆）
         PokongciBloomFX.Instance.PlayHuifengwuFX(transform, isBloom);
 
         Vector3 basePos = transform.position;
         bool origFlip = spriteRenderer != null && spriteRenderer.flipX;
 
-        if (huifengwuSprites != null && huifengwuSprites.Length >= 8)
+        if (huifengwuSprites != null && huifengwuSprites.Length >= 8 && huifengwuSprites[0] != null)
         {
-            // 60 FPS 8阶段关键帧时长定义：
-            // F1: 拧腰抱剑 (4f, 0.067s)
-            // F2: 旋足踏风 (5f, 0.083s)
-            // F3: 剑轮初开 (4f, 0.067s - Active 1)
-            // F4: 顺风展袖 (3f, 0.050s - Mid-Spin Flow)
-            // F5: 双层风暴 (4f, 0.067s - Active 2)
-            // F6: 侧步插剑 (5f, 0.083s - Side-Step Brake)
-            // F7: 挽花收剑 (5f, 0.083s - Flourish)
-            // F8: 拂袖敛意 (6f, 0.100s - Neutral Return)
+            // 60 FPS 8阶段完整双手挥剑动作帧时序：
+            // F1: 拧腰蓄剑 (attack-5 手臂高提蓄劲)
+            // F2: 旋身撩剑 (attack-7 双手向上猛挑撩斩)
+            // F3: 剑轮初开 (attack-3 手臂全力舒展横斩)
+            // F4: 展袖换势 (attack-8 双手回带转剑流光)
+            // F5: 双层风暴 (attack-11 360°双手全力回旋怒挥重斩)
+            // F6: 侧步插剑 (attack-6 双手沉剑下劈定风)
+            // F7: 挽花收剑 (attack-12 手腕轻抖挽水墨剑花)
+            // F8: 拂袖敛意 (attack-4 双手持剑秋水入鞘)
             float[] frameDurations = isBloom
                 ? new float[] { 0.07f, 0.08f, 0.08f, 0.06f, 0.09f, 0.08f, 0.08f, 0.09f }
                 : new float[] { 0.067f, 0.083f, 0.067f, 0.050f, 0.067f, 0.083f, 0.083f, 0.100f };
@@ -740,21 +785,20 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         }
         else
         {
-            // 降级备用旋转播放
-            float spinTime = isBloom ? 0.45f : 0.32f;
-            float el = 0f;
-            while (el < spinTime)
+            // 备用降级：如果精灵帧未就绪，强制调用 Animator 播放实打实的普通连斩动画，绝不静止待机！
+            if (animator != null)
             {
-                el += Time.deltaTime;
-                float t = el / spinTime;
-                if (spriteRenderer != null)
-                {
-                    spriteRenderer.flipX = ((int)(el * 18f) % 2 == 0);
-                    spriteRenderer.color = isBloom ? new Color(0.7f, 1f, 1f) : Color.white;
-                }
-                float hop = Mathf.Sin(t * Mathf.PI) * (isBloom ? 0.25f : 0.15f);
-                transform.position = new Vector3(basePos.x, basePos.y + hop, basePos.z);
-                yield return null;
+                animator.enabled = true;
+                animator.Play("Attack1", 0, 0f);
+                yield return new WaitForSeconds(0.12f);
+                animator.Play("Attack2", 0, 0f);
+                yield return new WaitForSeconds(0.14f);
+                animator.Play("Attack3", 0, 0f);
+                yield return new WaitForSeconds(0.20f);
+            }
+            else
+            {
+                yield return new WaitForSeconds(0.35f);
             }
         }
 
