@@ -110,6 +110,109 @@ public class PokongciBloomFX : MonoBehaviour
     }
 
     /// <summary>
+    /// 触发回风舞旋风剑轮与风暴解围特效 (QF-2 / QF-2E)
+    /// </summary>
+    public void PlayHuifengwuFX(Transform caster, bool isBloom)
+    {
+        StartCoroutine(HuifengwuRoutine(caster, isBloom));
+    }
+
+    private IEnumerator HuifengwuRoutine(Transform caster, bool isBloom)
+    {
+        Vector3 center = caster.position + new Vector3(0, 0.45f, 0);
+        float radiusScale = isBloom ? 1.6f : 1.0f;
+
+        // 1. 地面旋转水墨风磨盘贴花
+        GameObject groundDecal = new GameObject("VFX_Huifengwu_Ground");
+        groundDecal.transform.position = caster.position;
+        groundDecal.transform.localScale = new Vector3(radiusScale * 1.4f, 0.5f, 1f);
+        SpriteRenderer gSr = groundDecal.AddComponent<SpriteRenderer>();
+        gSr.sprite = shockwaveSprite;
+        gSr.color = isBloom ? new Color(0.1f, 0.9f, 1f, 0.9f) : new Color(0.1f, 0.7f, 0.9f, 0.75f);
+        gSr.sortingOrder = 4;
+        StartCoroutine(FadeAndDestroy(groundDecal, isBloom ? 0.8f : 0.5f));
+
+        // 2. 双层水平与交错旋转剑轮
+        GameObject ring1 = new GameObject("VFX_BladeRing_1");
+        ring1.transform.position = center;
+        SpriteRenderer r1Sr = ring1.AddComponent<SpriteRenderer>();
+        r1Sr.sprite = shockwaveSprite;
+        r1Sr.color = Color.white;
+        r1Sr.sortingOrder = 17;
+        ring1.transform.localScale = Vector3.one * (0.8f * radiusScale);
+
+        GameObject ring2 = new GameObject("VFX_BladeRing_2");
+        ring2.transform.position = center;
+        SpriteRenderer r2Sr = ring2.AddComponent<SpriteRenderer>();
+        r2Sr.sprite = shockwaveSprite;
+        r2Sr.color = isBloom ? new Color(1f, 0.95f, 0.4f, 0.9f) : new Color(0.2f, 0.95f, 1f, 0.9f);
+        r2Sr.sortingOrder = 18;
+        ring2.transform.localScale = Vector3.one * (1.1f * radiusScale);
+
+        // 3. 伴随旋转的螺旋风刃与离心星尘
+        float spinDuration = isBloom ? 0.45f : 0.30f;
+        float elapsed = 0f;
+        int hitPulses = isBloom ? 5 : 2;
+        float pulseInterval = spinDuration / hitPulses;
+        float nextPulse = 0.05f;
+
+        while (elapsed < spinDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / spinDuration;
+
+            // 剑轮动态膨胀与自旋
+            ring1.transform.localScale = Vector3.Lerp(Vector3.one * 0.6f * radiusScale, Vector3.one * 1.5f * radiusScale, t);
+            ring2.transform.localScale = Vector3.Lerp(Vector3.one * 0.8f * radiusScale, Vector3.one * 1.8f * radiusScale, t);
+            ring1.transform.Rotate(0, 0, 1800f * Time.deltaTime);
+            ring2.transform.Rotate(0, 0, -1800f * Time.deltaTime);
+
+            r1Sr.color = new Color(1f, 1f, 1f, 1f - t);
+            r2Sr.color = new Color(r2Sr.color.r, r2Sr.color.g, r2Sr.color.b, 1f - t);
+
+            // 离心喷溅星尘
+            if (Random.value < 0.6f)
+            {
+                SpawnStardustParticle(center + (Vector3)Random.insideUnitCircle * (0.8f * radiusScale));
+            }
+
+            // 多段命中顿挫
+            if (elapsed >= nextPulse)
+            {
+                TriggerCameraShake(isBloom ? 0.22f : 0.12f, 0.08f);
+                nextPulse += pulseInterval;
+            }
+
+            yield return null;
+        }
+
+        Destroy(ring1);
+        Destroy(ring2);
+
+        // 4. 刹车定格：外扩冲击波大爆发
+        GameObject shock = new GameObject("VFX_BrakeShockwave");
+        shock.transform.position = center;
+        SpriteRenderer sSr = shock.AddComponent<SpriteRenderer>();
+        sSr.sprite = shockwaveSprite;
+        sSr.color = isBloom ? new Color(0.2f, 0.95f, 1f, 0.95f) : new Color(0.4f, 0.8f, 1f, 0.8f);
+        sSr.sortingOrder = 20;
+        StartCoroutine(ExpandAndFade(shock, sSr, 0.25f, 3.2f * radiusScale));
+
+        if (isBloom)
+        {
+            // 强化版中心爆开极光十字星芒
+            GameObject star = new GameObject("VFX_BloomStar");
+            star.transform.position = center;
+            SpriteRenderer starSr = star.AddComponent<SpriteRenderer>();
+            starSr.sprite = starburstSprite;
+            starSr.color = Color.white;
+            starSr.sortingOrder = 22;
+            StartCoroutine(FadeAndScale(star, starSr, 0.35f, 2.4f));
+            TriggerCameraShake(0.35f, 0.16f);
+        }
+    }
+
+    /// <summary>
     /// 触发破空刺·剑意绽放全套特效
     /// </summary>
     public void PlayBloomEffect(Transform caster, bool flipX, Vector3 startPos, Vector3 endPos, Sprite casterSprite)

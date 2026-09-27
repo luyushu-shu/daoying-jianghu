@@ -44,6 +44,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     bool isSkillPlaying = false;
     float skillTimer = 0f;
     Sprite[] pokongciSprites;
+    Sprite[] huifengwuSprites;
     string currentActionName = "待机 (Idle)";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -65,6 +66,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         combat = GetComponent<CombatActor>();
         groundY = transform.position.y;
         LoadPokongciSprites();
+        LoadHuifengwuSprites();
     }
 
     void LoadPokongciSprites()
@@ -80,6 +82,23 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         if (list.Count > 0)
         {
             pokongciSprites = list.ToArray();
+        }
+#endif
+    }
+
+    void LoadHuifengwuSprites()
+    {
+#if UNITY_EDITOR
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string p = $"Assets/Sprites/Player/Skills/Huifengwu/huifengwu-{i}.png";
+            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+            if (sp != null) list.Add(sp);
+        }
+        if (list.Count > 0)
+        {
+            huifengwuSprites = list.ToArray();
         }
 #endif
     }
@@ -241,6 +260,13 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.U))
         {
             TriggerPokongci();
+            return;
+        }
+
+        // 回风舞技能 (E 或 O)
+        if (Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.O))
+        {
+            TriggerHuifengwu();
             return;
         }
 
@@ -619,12 +645,138 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         currentActionName = "待机 (Idle)";
     }
 
-    void OnGUI()
+    public void TriggerHuifengwu()
+    {
+        if (isSkillPlaying) return;
+        attackStep = 0;
+        attackTimer = 0f;
+        comboWindow = 0f;
+        blockTimer = 0f;
+        dodgeTimer = 0f;
+        if (isBloomActive)
+        {
+            StartCoroutine(HuifengwuRoutine(true));
+        }
+        else
+        {
+            StartCoroutine(HuifengwuRoutine(false));
+        }
+    }
+
+    public void TriggerHuifengwuBloom()
+    {
+        if (isSkillPlaying) return;
+        swordIntent = 5;
+        attackStep = 0;
+        attackTimer = 0f;
+        comboWindow = 0f;
+        blockTimer = 0f;
+        dodgeTimer = 0f;
+        StartCoroutine(HuifengwuRoutine(true));
+    }
+
+    IEnumerator HuifengwuRoutine(bool isBloom)
+    {
+        isSkillPlaying = true;
+        currentActionName = isBloom ? "剑意·回风舞（青鸾风暴）" : "回风舞 (Whirling Wind Dance)";
+        if (isBloom) swordIntent = 0;
+
+        if (animator != null) animator.enabled = false;
+
+        // 触发回风舞专属特效（风暴旋涡、刀轮与粒子）
+        PokongciBloomFX.Instance.PlayHuifengwuFX(transform, isBloom);
+
+        Vector3 basePos = transform.position;
+        bool origFlip = spriteRenderer != null && spriteRenderer.flipX;
+
+        if (huifengwuSprites != null && huifengwuSprites.Length >= 8)
+        {
+            // 60 FPS 8阶段关键帧时长定义：
+            // F1: 拧腰抱剑 (4f, 0.067s)
+            // F2: 旋足踏风 (5f, 0.083s)
+            // F3: 剑轮初开 (4f, 0.067s - Active 1)
+            // F4: 顺风展袖 (3f, 0.050s - Mid-Spin Flow)
+            // F5: 双层风暴 (4f, 0.067s - Active 2)
+            // F6: 侧步插剑 (5f, 0.083s - Side-Step Brake)
+            // F7: 挽花收剑 (5f, 0.083s - Flourish)
+            // F8: 拂袖敛意 (6f, 0.100s - Neutral Return)
+            float[] frameDurations = isBloom
+                ? new float[] { 0.07f, 0.08f, 0.08f, 0.06f, 0.09f, 0.08f, 0.08f, 0.09f }
+                : new float[] { 0.067f, 0.083f, 0.067f, 0.050f, 0.067f, 0.083f, 0.083f, 0.100f };
+
+            // 绽放形态全身青光荧华
+            if (isBloom && spriteRenderer != null)
+            {
+                spriteRenderer.color = new Color(0.65f, 1f, 1f, 1f);
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.sprite = huifengwuSprites[i];
+                }
+
+                // F4~F5 微腾空跃起 0.15m~0.25m
+                if (i == 3 || i == 4)
+                {
+                    float hop = isBloom ? 0.22f : 0.14f;
+                    transform.position = new Vector3(basePos.x, basePos.y + hop, basePos.z);
+                }
+                else
+                {
+                    transform.position = basePos;
+                }
+
+                // 强化形态在 F3 和 F5 判定命中瞬间进行轻微画面顿帧 (Hitstop)
+                if (isBloom && (i == 2 || i == 4))
+                {
+                    Time.timeScale = 0.25f;
+                    yield return new WaitForSecondsRealtime(0.04f);
+                    Time.timeScale = 1.0f;
+                }
+
+                yield return new WaitForSeconds(frameDurations[i]);
+            }
+        }
+        else
+        {
+            // 降级备用旋转播放
+            float spinTime = isBloom ? 0.45f : 0.32f;
+            float el = 0f;
+            while (el < spinTime)
+            {
+                el += Time.deltaTime;
+                float t = el / spinTime;
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.flipX = ((int)(el * 18f) % 2 == 0);
+                    spriteRenderer.color = isBloom ? new Color(0.7f, 1f, 1f) : Color.white;
+                }
+                float hop = Mathf.Sin(t * Mathf.PI) * (isBloom ? 0.25f : 0.15f);
+                transform.position = new Vector3(basePos.x, basePos.y + hop, basePos.z);
+                yield return null;
+            }
+        }
+
+        transform.position = basePos;
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.flipX = origFlip;
+            spriteRenderer.color = Color.white;
+        }
+
+        if (animator != null) animator.enabled = true;
+        isSkillPlaying = false;
+        currentActionName = "待机 (Idle)";
+    }
+
+        void OnGUI()
     {
         // 仅在独立预览模式下绘制操控面板
         if (combat != null) return;
 
-        GUILayout.BeginArea(new Rect(20, 20, 380, 440), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(20, 20, 390, 510), GUI.skin.box);
         GUILayout.Label("<b><size=15>【刀影江湖 · 青锋动作与技能预览台】</size></b>");
         GUILayout.Space(4);
         GUILayout.Label($"<b>当前动作：</b><color=#00ff88>{currentActionName}</color>");
@@ -643,17 +795,33 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.Space(6);
-        GUILayout.Label("<b>--- 破空刺双形态验证 (彻底区别于重刺) ---</b>");
+        GUILayout.Label("<b>--- 技能1：破空刺 (瞬身错身穿透 Q/U) ---</b>");
         GUILayout.BeginHorizontal();
         GUI.color = new Color(0.4f, 1f, 1f);
-        if (GUILayout.Button("常态破空刺 (穿透敌后1.3m+延时墨爆)", GUILayout.Height(32)))
+        if (GUILayout.Button("常态错身刺 (穿透1.3m+延时墨爆)", GUILayout.Height(30)))
         {
             StartCoroutine(PokongciRoutine());
         }
         GUI.color = new Color(1f, 0.8f, 0.1f);
-        if (GUILayout.Button("★ 剑意绽放·极破空刺 (穿透1.8m+四剑+三度墨爆)", GUILayout.Height(32)))
+        if (GUILayout.Button("★ 极·破空刺 (无敌1.8m+四剑+三度爆)", GUILayout.Height(30)))
         {
             TriggerPokongciBloom();
+        }
+        GUI.color = Color.white;
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(6);
+        GUILayout.Label("<b>--- 技能2：回风舞 (360°旋风范围解围 E/O) ---</b>");
+        GUILayout.BeginHorizontal();
+        GUI.color = new Color(0.3f, 0.95f, 1f);
+        if (GUILayout.Button("常态回风舞 (双层剑轮+微聚怪)", GUILayout.Height(30)))
+        {
+            TriggerHuifengwu();
+        }
+        GUI.color = new Color(1f, 0.85f, 0.2f);
+        if (GUILayout.Button("★ 青鸾风暴·回风舞 (黑洞5段绞杀)", GUILayout.Height(30)))
+        {
+            TriggerHuifengwuBloom();
         }
         GUI.color = Color.white;
         GUILayout.EndHorizontal();
