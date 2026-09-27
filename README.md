@@ -133,6 +133,9 @@
 [秋水敛锋] ──> F8 (30~35f): 拂袖敛意 (剑身收敛寒芒，秋水无波，从容无缝衔接待机 Idle)
 ```
 
+#### 强化版·回风舞（青鸾风暴）电影级特效全案设计图 (1920×1080)
+![回风舞青鸾风暴电影级特效全案设计图](New%20Tuanjie%20Project/Assets/Sprites/Player/Skills/Huifengwu/huifengwu_bloom_vfx_sheet.jpg)
+
 #### 回风舞双形态战斗数值对比
 
 | 维度 | 常态：回风舞 (`QF-2`) | 强化：青鸾风暴 (`QF-2E`) | 战术定位与核心价值 |
