@@ -40,10 +40,11 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     float lungeTimer = 0f;
     float lungeSpeed = 0f;
 
-    // 破空刺技能帧与状态
+    // 破空刺/回风舞/一剑霜寒 技能帧与状态
     bool isSkillPlaying = false;
     [SerializeField] public Sprite[] pokongciSprites;
     [SerializeField] public Sprite[] huifengwuSprites;
+    [SerializeField] public Sprite[] yijianshuanghanSprites;
     string currentActionName = "待机 (Idle)";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -66,6 +67,56 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         groundY = transform.position.y;
         LoadPokongciSprites();
         LoadHuifengwuSprites();
+        LoadYijianshuanghanSprites();
+    }
+
+    public void LoadYijianshuanghanSprites()
+    {
+#if UNITY_EDITOR
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string p = $"Assets/Sprites/Player/Skills/Yijianshuanghan/yijianshuanghan-{i}.png";
+            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+            if (sp != null) list.Add(sp);
+        }
+        if (list.Count >= 8)
+        {
+            yijianshuanghanSprites = list.ToArray();
+            return;
+        }
+#endif
+        LoadYijianshuanghanSpritesFromDisk();
+    }
+
+    void LoadYijianshuanghanSpritesFromDisk()
+    {
+        string dir = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Yijianshuanghan");
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string filePath = System.IO.Path.Combine(dir, $"yijianshuanghan-{i}.png");
+            if (System.IO.File.Exists(filePath))
+            {
+                byte[] bytes = System.IO.File.ReadAllBytes(filePath);
+                Texture2D tex = new Texture2D(680, 480, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Bilinear;
+                if (tex.LoadImage(bytes))
+                {
+                    Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.09f), 214f);
+                    list.Add(sp);
+                }
+            }
+        }
+        if (list.Count >= 8)
+        {
+            yijianshuanghanSprites = list.ToArray();
+            Debug.Log($"[PlayerSpriteLocomotion] Successfully loaded {yijianshuanghanSprites.Length} Yijianshuanghan sprites directly from disk!");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 8 Yijianshuanghan sprites from disk (loaded {list.Count}) at {dir}");
+        }
     }
 
     void LoadPokongciSprites()
@@ -298,6 +349,13 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.O))
         {
             TriggerHuifengwu();
+            return;
+        }
+
+        // 一剑霜寒技能 (I)
+        if (Input.GetKeyDown(KeyCode.I))
+        {
+            TriggerYijianshuanghan();
             return;
         }
 
@@ -814,7 +872,98 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         currentActionName = "待机 (Idle)";
     }
 
-        void OnGUI()
+    public void TriggerYijianshuanghan()
+    {
+        if (isSkillPlaying) return;
+        if (yijianshuanghanSprites == null || yijianshuanghanSprites.Length < 8 || yijianshuanghanSprites[0] == null)
+        {
+            LoadYijianshuanghanSprites();
+        }
+        attackStep = 0;
+        attackTimer = 0f;
+        comboWindow = 0f;
+        blockTimer = 0f;
+        dodgeTimer = 0f;
+        StartCoroutine(YijianshuanghanRoutine());
+    }
+
+    IEnumerator YijianshuanghanRoutine()
+    {
+        isSkillPlaying = true;
+        currentActionName = "一剑霜寒 (Frostbound Slash · 蓄力霜线)";
+
+        if (yijianshuanghanSprites == null || yijianshuanghanSprites.Length < 8 || yijianshuanghanSprites[0] == null)
+        {
+            LoadYijianshuanghanSprites();
+        }
+
+        if (animator != null) animator.enabled = false;
+
+        Vector3 basePos = transform.position;
+        bool origFlip = spriteRenderer != null && spriteRenderer.flipX;
+        float faceDir = origFlip ? -1f : 1f;
+
+        if (yijianshuanghanSprites != null && yijianshuanghanSprites.Length >= 8 && yijianshuanghanSprites[0] != null)
+        {
+            // 8阶段时序：
+            // F1: 结势·冰霜凝聚 (0.10s)
+            // F2: 提剑·寒气汇聚 (0.13s)
+            // F3: 蓄力·冰刃成型 (0.18s)
+            // F4: 斩出·霜寒剑芒 (0.09s, 击中顿帧)
+            // F5: 前刺·冰锋破地 (0.11s, 前冲微位移 0.35m)
+            // F6: 进步·寒气延绵 (0.13s)
+            // F7: 振刃·冰晶碎散 (0.13s)
+            // F8: 入鞘·风息归平 (0.16s)
+            float[] frameDurations = new float[] { 0.10f, 0.13f, 0.18f, 0.09f, 0.11f, 0.13f, 0.13f, 0.16f };
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.sprite = yijianshuanghanSprites[i];
+                }
+
+                // F4 斩出瞬间 Hitstop (顿帧)
+                if (i == 3)
+                {
+                    Time.timeScale = 0.25f;
+                    yield return new WaitForSecondsRealtime(0.04f);
+                    Time.timeScale = 1.0f;
+                }
+
+                // F5 前刺冲刷微位移
+                if (i == 4)
+                {
+                    Vector3 p = transform.position;
+                    p.x += faceDir * 0.35f;
+                    transform.position = p;
+                }
+
+                yield return new WaitForSeconds(frameDurations[i]);
+            }
+        }
+        else
+        {
+            if (animator != null)
+            {
+                animator.enabled = true;
+                animator.Play("HeavyThrust", 0, 0f);
+            }
+            yield return new WaitForSeconds(0.6f);
+        }
+
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.flipX = origFlip;
+            spriteRenderer.color = Color.white;
+        }
+
+        if (animator != null) animator.enabled = true;
+        isSkillPlaying = false;
+        currentActionName = "待机 (Idle)";
+    }
+
+    void OnGUI()
     {
         // 仅在独立预览模式下绘制操控面板
         if (combat != null) return;
@@ -865,6 +1014,17 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         if (GUILayout.Button("★ 青鸾风暴·回风舞 (黑洞5段绞杀)", GUILayout.Height(30)))
         {
             TriggerHuifengwuBloom();
+        }
+        GUI.color = Color.white;
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(6);
+        GUILayout.Label("<b>--- 技能3：一剑霜寒 (长距离蓄力破防霜线 I) ---</b>");
+        GUILayout.BeginHorizontal();
+        GUI.color = new Color(0.45f, 0.85f, 1f);
+        if (GUILayout.Button("一剑霜寒 (8阶段蓄力破防霜线斩 I)", GUILayout.Height(30)))
+        {
+            TriggerYijianshuanghan();
         }
         GUI.color = Color.white;
         GUILayout.EndHorizontal();
