@@ -22,8 +22,8 @@ public class CombatActor : MonoBehaviour
     public float hp;
     public float maxChi = 100f;
     public float chi;
-    public float maxPoise;   // 0 = 无架势条（玩家）
-    public float poise;
+    public float maxPoise = 100f;   // 架势条（玩家与敌人均有）
+    public float poise = 100f;
 
     [Header("机动")]
     public float runSpeed = 5.5f;
@@ -140,9 +140,9 @@ public class CombatActor : MonoBehaviour
             airLightStep = 0;
         }
 
-        // 架势回复：3秒未受击后缓慢回
-        if (maxPoise > 0f && poise < maxPoise && CombatDirector.Frame - lastHitTakenFrame > 180)
-            poise = Mathf.Min(maxPoise, poise + maxPoise / 300f);
+        // 架势回复：非格挡且2秒未受击后平稳回复
+        if (maxPoise > 0f && poise < maxPoise && !(state is BlockState) && CombatDirector.Frame - lastHitTakenFrame > 120)
+            poise = Mathf.Min(maxPoise, poise + maxPoise / 180f);
 
         // 剑意衰减：脱战3秒后每秒-1
         if (isPlayer && intent > 0 && CombatDirector.Frame - lastIntentGainFrame > 180)

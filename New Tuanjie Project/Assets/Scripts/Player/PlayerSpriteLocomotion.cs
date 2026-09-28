@@ -18,6 +18,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     const float Gravity = 24.0f;
     const float BlockDuration = 0.68f;
     const float ParryWindow = 0.18f;
+    const float GuardBreakStunDuration = 1.25f; // 破防大僵直时长 (1.25秒 / 75帧)
 
     public Animator animator;
     public SpriteRenderer spriteRenderer;
@@ -26,9 +27,18 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     float dodgeTimer = 0f;
     float dodgeDir = 1f;
     float blockTimer = 0f;
+    bool isBlockingHeld = false;
+    float blockHoldDuration = 0f;
+    float guardStrain = 0f;       // 架势负荷 (0~100，爆满强制弹刀破防)
+    float blockEfficiency = 1.0f; // 格挡效能 (1.0 -> 0.30 维持时间越久越弱)
+    float stunTimer = 0f;         // 破防僵直计时器
 
-    public bool IsBlocking => blockTimer > 0f;
-    public bool IsParryWindow => blockTimer > 0f && (BlockDuration - blockTimer) <= ParryWindow;
+    public bool IsBlocking => isBlockingHeld || blockTimer > 0f;
+    public bool IsParryWindow => IsBlocking && blockHoldDuration <= ParryWindow;
+    public bool IsStunned => stunTimer > 0f;
+    public float BlockEfficiency => blockEfficiency;
+    public float GuardStrain => guardStrain;
+    public float StunTimer => stunTimer;
 
     float velY = 0f;
     float groundY = 0f;
@@ -588,6 +598,33 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             return;
         }
 
+        // 破防僵直状态（弹刀后陷入硬直，无法行动）
+        if (stunTimer > 0f)
+        {
+            stunTimer -= Time.deltaTime;
+            currentActionName = $"【弹刀破防僵直】无法行动 ({stunTimer:F1}s)";
+            // 僵直期间微红受损受击闪烁
+            if (spriteRenderer != null)
+            {
+                float pulse = Mathf.PingPong(Time.time * 6f, 0.35f);
+                spriteRenderer.color = new Color(1f, 0.65f - pulse, 0.65f - pulse, 1f);
+            }
+            // 恢复架势负荷
+            guardStrain = Mathf.Lerp(guardStrain, 0f, Time.deltaTime * 3f);
+            if (stunTimer <= 0f)
+            {
+                stunTimer = 0f;
+                guardStrain = 0f;
+                if (spriteRenderer != null) spriteRenderer.color = Color.white;
+                currentActionName = "待机 (Idle)";
+                if (animator != null)
+                {
+                    animator.Play("Idle", 0, 0f);
+                }
+            }
+            return; // 僵直期间完全屏蔽所有移动、攻击、格挡、闪避输入
+        }
+
         // 空中重力与落地解算
         if (!isGrounded)
         {
@@ -616,50 +653,99 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             return;
         }
 
-        // 格挡架势更新
-        if (blockTimer > 0f)
+        // 格挡架势持续更新与衰减
+        if (isBlockingHeld || blockTimer > 0f)
         {
-            blockTimer -= Time.deltaTime;
-            currentActionName = "格挡架势 (Block)";
-
-            if (Input.GetKeyDown(KeyCode.Space))
+            // 维持按住按键：格挡持续不退
+            if (Input.GetKey(KeyCode.F))
             {
-                blockTimer = 0f;
-                StartDodge();
+                isBlockingHeld = true;
+                blockHoldDuration += Time.deltaTime;
+
+                // 维持时间越久，格挡效果越弱：
+                // 前 0.25 秒为稳态 (100%)，随后在 3.0 秒内线性衰减至 30% 最低稳态
+                float decayTime = Mathf.Max(0f, blockHoldDuration - 0.25f);
+                blockEfficiency = Mathf.Clamp(1.0f - (decayTime / 3.0f) * 0.70f, 0.30f, 1.0f);
+
+                // 长时间维持格挡消耗少量架势负荷（疲劳微增，不自爆）
+                if (blockHoldDuration > 1.2f)
+                {
+                    guardStrain = Mathf.Min(guardStrain + Time.deltaTime * 6.5f * (1.1f - blockEfficiency), 85f);
+                }
+
+                currentActionName = $"格挡架势 (效能:{Mathf.RoundToInt(blockEfficiency * 100)}% 负荷:{Mathf.RoundToInt(guardStrain)}/100)";
+
+                // 效能过低时身法出现轻度颤抖力竭反馈
+                if (blockEfficiency < 0.65f)
+                {
+                    float shake = Mathf.Sin(Time.time * 50f) * 0.008f * (1f - blockEfficiency);
+                    transform.position += new Vector3(shake, 0f, 0f);
+                }
+
+                // 格挡主动取消：闪避
+                if (Input.GetKeyDown(KeyCode.Space))
+                {
+                    ExitBlock();
+                    StartDodge();
+                    return;
+                }
+
+                // 格挡主动取消：轻攻击
+                if (Input.GetKeyDown(KeyCode.J) || Input.GetMouseButtonDown(0))
+                {
+                    ExitBlock();
+                    PerformNextAttack();
+                    return;
+                }
+
+                // 格挡主动取消：重刺
+                if (Input.GetKeyDown(KeyCode.K) || Input.GetMouseButtonDown(1))
+                {
+                    ExitBlock();
+                    PerformHeavyThrust();
+                    return;
+                }
+
+                // 模拟受击 (G 或 H，累计架势负荷并在爆满时弹刀破防)
+                if (Input.GetKeyDown(KeyCode.G) || Input.GetKeyDown(KeyCode.H))
+                {
+                    TriggerBlockHit();
+                    return;
+                }
+
+                // 模拟弹反成功 (T，大幅化解架势负荷)
+                if (Input.GetKeyDown(KeyCode.T))
+                {
+                    TriggerParrySuccess();
+                    return;
+                }
+
                 return;
             }
-
-            if (Input.GetKeyDown(KeyCode.J) || Input.GetMouseButtonDown(0))
+            else
             {
-                blockTimer = 0f;
-                PerformNextAttack();
-                return;
+                // 松开 F 键：平稳收招退出格挡
+                if (blockTimer > 0f)
+                {
+                    blockTimer -= Time.deltaTime;
+                    if (blockTimer <= 0f)
+                    {
+                        ExitBlock();
+                    }
+                }
+                else
+                {
+                    ExitBlock();
+                }
             }
-
-            if (Input.GetKeyDown(KeyCode.K) || Input.GetMouseButtonDown(1))
+        }
+        else
+        {
+            // 非格挡且非僵直状态下，架势负荷逐步自愈恢复 (每秒回 40 点)
+            if (guardStrain > 0f)
             {
-                blockTimer = 0f;
-                PerformHeavyThrust();
-                return;
+                guardStrain = Mathf.Max(0f, guardStrain - Time.deltaTime * 40f);
             }
-
-            if (Input.GetKeyDown(KeyCode.G))
-            {
-                TriggerBlockHit();
-                return;
-            }
-
-            if (Input.GetKeyDown(KeyCode.T))
-            {
-                TriggerParrySuccess();
-                return;
-            }
-
-            if (Input.GetKey(KeyCode.F) && blockTimer < 0.25f)
-            {
-                blockTimer = 0.25f;
-            }
-            return;
         }
 
         // 连击输入窗口衰减
@@ -784,21 +870,21 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         }
 
         // 格挡架势 (F)
-        if (Input.GetKeyDown(KeyCode.F) && isGrounded && dodgeTimer <= 0f)
+        if (Input.GetKeyDown(KeyCode.F) && isGrounded && dodgeTimer <= 0f && stunTimer <= 0f)
         {
             PerformBlock();
             return;
         }
 
-        // 普通格挡受击响应 (G)
-        if (Input.GetKeyDown(KeyCode.G) && isGrounded && dodgeTimer <= 0f)
+        // 普通格挡受击响应 (H 或 格挡中按 G 均可模拟受击)
+        if ((Input.GetKeyDown(KeyCode.H) || (isBlockingHeld && Input.GetKeyDown(KeyCode.G))) && isGrounded && dodgeTimer <= 0f && stunTimer <= 0f)
         {
             TriggerBlockHit();
             return;
         }
 
         // 完美弹反成功响应 (T)
-        if (Input.GetKeyDown(KeyCode.T) && isGrounded && dodgeTimer <= 0f)
+        if (Input.GetKeyDown(KeyCode.T) && isGrounded && dodgeTimer <= 0f && stunTimer <= 0f)
         {
             TriggerParrySuccess();
             return;
@@ -843,7 +929,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         }
         else
         {
-            if (isGrounded && attackTimer <= 0f && blockTimer <= 0f && dodgeTimer <= 0f)
+            if (isGrounded && attackTimer <= 0f && !IsBlocking && dodgeTimer <= 0f && stunTimer <= 0f)
                 currentActionName = "待机 (Idle)";
         }
 
@@ -861,6 +947,8 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
     public void StartDodge()
     {
+        if (stunTimer > 0f) return;
+        ExitBlock();
         dodgeDir = spriteRenderer != null && spriteRenderer.flipX ? -1f : 1f;
         if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) dodgeDir = -1f;
         if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) dodgeDir = 1f;
@@ -873,6 +961,8 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
     public void PerformNextAttack()
     {
+        if (stunTimer > 0f) return;
+        ExitBlock();
         if (attackStep == 0 || comboWindow <= 0f)
         {
             attackStep = 1;
@@ -907,6 +997,8 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
     public void PerformHeavyThrust()
     {
+        if (stunTimer > 0f) return;
+        ExitBlock();
         attackStep = 4;
         attackTimer = 0.76f;
         comboWindow = 0f;
@@ -918,33 +1010,100 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
     public void PerformBlock()
     {
+        if (stunTimer > 0f) return;
         attackStep = 0;
         attackTimer = 0f;
         comboWindow = 0f;
         lungeTimer = 0f;
+        isBlockingHeld = true;
+        blockHoldDuration = 0f;
+        blockEfficiency = 1.0f;
         blockTimer = BlockDuration;
         currentActionName = "格挡姿态 (Block Guard)";
-        if (animator != null) animator.SetTrigger("Block");
+        if (animator != null)
+        {
+            animator.SetBool("IsBlocking", true);
+            animator.SetTrigger("Block");
+        }
+    }
+
+    public void ExitBlock()
+    {
+        isBlockingHeld = false;
+        blockTimer = 0f;
+        blockHoldDuration = 0f;
+        blockEfficiency = 1.0f;
+        if (animator != null)
+        {
+            animator.SetBool("IsBlocking", false);
+        }
     }
 
     public void TriggerBlockHit()
     {
+        if (stunTimer > 0f) return;
         attackStep = 0;
         attackTimer = 0f;
         comboWindow = 0f;
         lungeTimer = 0f;
+
+        // 如果在弹反窗内受击，直接化为弹反成功
+        if (IsBlocking && blockHoldDuration <= ParryWindow)
+        {
+            TriggerParrySuccess();
+            return;
+        }
+
+        // 受到攻击增加架势负荷：基础 32 点；持盾越久效能越弱，承受负荷成反比急剧增大（最高放大 3.3 倍）
+        float strainAdded = 32f * (1.0f / Mathf.Max(0.25f, blockEfficiency));
+        guardStrain += strainAdded;
+
+        // 受到一定攻击架势负荷爆满（>=100）：【强制结束弹刀，并且僵直】！
+        if (guardStrain >= 100f)
+        {
+            TriggerGuardBreak();
+            return;
+        }
+
         blockTimer = 0.30f;
-        currentActionName = "普通格挡受击 (Block Hit)";
-        if (animator != null) animator.SetTrigger("BlockHit");
+        currentActionName = $"普通格挡受击 (效能:{Mathf.RoundToInt(blockEfficiency * 100)}% 负荷:{Mathf.RoundToInt(guardStrain)}/100)";
+        if (animator != null)
+        {
+            animator.SetTrigger("BlockHit");
+        }
+    }
+
+    public void TriggerGuardBreak()
+    {
+        isBlockingHeld = false;
+        blockTimer = 0f;
+        blockHoldDuration = 0f;
+        guardStrain = 100f;
+        stunTimer = GuardBreakStunDuration; // 1.25秒破防僵直
+        currentActionName = "【弹刀破防！】架势崩解僵直！";
+
+        if (animator != null)
+        {
+            animator.SetBool("IsBlocking", false);
+            animator.ResetTrigger("Block");
+            animator.Play("BlockHit", 0, 0f);
+        }
+
+        // 弹刀受力后退震退
+        float pushDir = (spriteRenderer != null && spriteRenderer.flipX) ? 1f : -1f;
+        Vector3 p = transform.position;
+        p.x += pushDir * 0.40f;
+        transform.position = p;
     }
 
     public void TriggerParrySuccess()
     {
+        if (stunTimer > 0f) return;
         attackStep = 0;
         attackTimer = 0f;
         comboWindow = 0f;
         lungeTimer = 0f;
-        blockTimer = 0.50f;
+        guardStrain = Mathf.Max(0f, guardStrain - 30f); // 弹反成功大幅化解架势负荷
         currentActionName = "完美弹反成功 (Parry Success)";
         if (animator != null) animator.SetTrigger("ParrySuccess");
     }
@@ -1823,13 +1982,27 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         // 仅在独立预览模式下绘制操控面板
         if (combat != null) return;
 
-        GUILayout.BeginArea(new Rect(20, 20, 440, 670), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(20, 20, 450, 720), GUI.skin.box);
         GUILayout.Label("<b><size=15>【刀影江湖 · 青锋动作与技能预览台】</size></b>");
         GUILayout.Space(4);
         GUILayout.Label($"<b>当前动作：</b><color=#00ff88>{currentActionName}</color>");
         GUILayout.Label($"<b>剑意状态：</b>[ <color=#00e1ff>{new string('★', swordIntent)}{new string('☆', 5 - swordIntent)}</color> ({swordIntent}/5阶) ]  " +
                         $"<color={(isBloomActive ? "#ffff00" : "#aaaaaa")}><b>{(isBloomActive ? "【剑意澄澈·可绽放】" : "蓄力中")}</b></color>");
-        GUILayout.Label($"<b>接地状态：</b>{(isGrounded ? "已在地面" : "空中升降")} | <b>格挡：</b>{(IsBlocking ? "格挡中" : "无")}");
+
+        string blockStatus = IsStunned 
+            ? "<b><color=#ff3333>【⚠️ 弹刀破防僵直中！】</color></b>" 
+            : (IsBlocking ? "<color=#00ff88>【架势保持中】</color>" : "未格挡");
+        string effColor = blockEfficiency > 0.7f ? "#00ff88" : (blockEfficiency > 0.45f ? "#ffcc00" : "#ff3333");
+        string strainColor = guardStrain < 50f ? "#00e1ff" : (guardStrain < 80f ? "#ff9900" : "#ff2222");
+
+        GUILayout.Label($"<b>接地：</b>{(isGrounded ? "地面" : "空中")} | <b>格挡状态：</b>{blockStatus}");
+        GUILayout.Label($"<b>格挡效能：</b><color={effColor}><b>{Mathf.RoundToInt(blockEfficiency * 100)}%</b></color> (维持时间:{blockHoldDuration:F2}s) | " +
+                        $"<b>架势负荷：</b><color={strainColor}><b>{Mathf.RoundToInt(guardStrain)}/100</b></color>" + (guardStrain >= 80f ? " <color=red><b>[濒临破防]</b></color>" : ""));
+
+        if (IsStunned)
+        {
+            GUILayout.Label($"<color=#ff3333><b>>>> 破防僵直剩余：{stunTimer:F2} 秒 (全动作封锁无法行动) <<<</b></color>");
+        }
         GUILayout.Space(4);
 
         // 剑意充能切换
@@ -1939,25 +2112,24 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.Space(6);
-        GUILayout.Label("<b>--- 防守与身法 ---</b>");
+        GUILayout.Label("<b>--- 防守、架势与破防测试 ---</b>");
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("格挡(F)")) PerformBlock();
-        if (GUILayout.Button("受击(G)")) TriggerBlockHit();
-        if (GUILayout.Button("弹反(T)")) TriggerParrySuccess();
-        if (GUILayout.Button("闪避(Space)")) StartDodge();
-        if (GUILayout.Button("跳跃(W)"))
+        if (GUILayout.Button(IsBlocking ? "松开格挡(F)" : "格挡保持(F)"))
         {
-            if (isGrounded)
-            {
-                isGrounded = false;
-                velY = JumpVelocity;
-                if (animator != null) { animator.SetBool("IsGrounded", false); animator.SetTrigger("Jump"); }
-            }
+            if (IsBlocking) ExitBlock();
+            else PerformBlock();
         }
+        if (GUILayout.Button("模拟受击(G/H)")) TriggerBlockHit();
+        if (GUILayout.Button("完美弹反(T)")) TriggerParrySuccess();
+        GUI.color = new Color(1f, 0.45f, 0.45f);
+        if (GUILayout.Button("测试弹刀破防")) TriggerGuardBreak();
+        GUI.color = Color.white;
+        if (GUILayout.Button("闪避(Space)")) StartDodge();
         GUILayout.EndHorizontal();
 
         GUILayout.Space(6);
-        GUILayout.Label("<color=#cccccc><size=11>按键提示：Q/U 释放破空刺（满5层剑意自动触发绽放强化版）\nA/D 行走 | Shift+A/D 奔跑 | W 跳跃 | Space 闪避 | J 轻击三连 | K 重刺</size></color>");
+        GUILayout.Label("<color=#cccccc><size=11>按键提示：长按 F 维持格挡（维持越久效能越弱，受击负荷达 100 弹刀僵直）\n" +
+                        "按 G/H 模拟受击 | 按 T 完美弹反 | Space 闪避 | J 轻击三连 | K 重刺 | Q/U 破空刺 | E/O 回风舞 | I 霜寒 | R/P 引剑</size></color>");
         GUILayout.EndArea();
     }
 }

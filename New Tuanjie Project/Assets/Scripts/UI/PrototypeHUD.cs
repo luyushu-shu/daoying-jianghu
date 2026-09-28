@@ -61,10 +61,16 @@ public class PrototypeHUD : MonoBehaviour
             y += 26 * k;
             Bar(x, y, 300 * k, 18 * k, player.hp / player.maxHP, new Color(0.25f, 0.1f, 0.1f), new Color(0.85f, 0.25f, 0.2f));
             GUI.Label(new Rect(x + 306 * k, y - 2 * k, 120 * k, 22 * k), "气血 " + Mathf.CeilToInt(player.hp), small);
-            y += 24 * k;
             Bar(x, y, 240 * k, 12 * k, player.chi / player.maxChi, new Color(0.08f, 0.15f, 0.2f), new Color(0.3f, 0.75f, 0.9f));
             GUI.Label(new Rect(x + 246 * k, y - 4 * k, 120 * k, 22 * k), "内力 " + Mathf.CeilToInt(player.chi), small);
-            y += 22 * k;
+            y += 20 * k;
+            Bar(x, y, 220 * k, 10 * k, player.poise / player.maxPoise, new Color(0.2f, 0.15f, 0.08f), new Color(0.95f, 0.75f, 0.25f));
+            BlockState bs = player.state as BlockState;
+            string poiseText = bs != null 
+                ? $"架势 {Mathf.CeilToInt(player.poise)} (效能{Mathf.RoundToInt(bs.GuardEfficiency * 100)}%)" 
+                : $"架势 {Mathf.CeilToInt(player.poise)}";
+            GUI.Label(new Rect(x + 226 * k, y - 5 * k, 200 * k, 20 * k), poiseText, small);
+            y += 20 * k;
             // 剑意五格
             for (int i = 0; i < 5; i++)
             {

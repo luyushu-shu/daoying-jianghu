@@ -81,8 +81,7 @@ public static class SpriteAnimSetup
     };
     static readonly string[] BlockGuardFrames =
     {
-        "guard-1", "guard-2", "guard-3", "guard-4",
-        "guard-5", "guard-6", "guard-7"
+        "guard-1", "guard-2", "guard-3", "guard-4"
     };
     static readonly string[] BlockHitFrames =
     {

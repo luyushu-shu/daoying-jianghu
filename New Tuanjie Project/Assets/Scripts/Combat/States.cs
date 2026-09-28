@@ -476,26 +476,51 @@ public class AttackState : ActorState
     }
 }
 
-/// <summary>格挡：按住维持；按下后第6–10帧为弹反窗。</summary>
+/// <summary>格挡：按住维持；维持时间越久效果越弱；受到一定攻击强制弹刀破防并陷入长僵直。</summary>
 public class BlockState : ActorState
 {
+    public float GuardEfficiency { get; private set; } = 1.0f;
+
     public BlockState(CombatActor a) : base(a, "Block") { }
 
     public override void Enter()
     {
         base.Enter();
         actor.TriggerAnim("Block");
+        if (actor.playerAnim != null) actor.playerAnim.SetBool("IsBlocking", true);
+        GuardEfficiency = 1.0f;
+    }
+
+    public override void Exit()
+    {
+        base.Exit();
+        if (actor.playerAnim != null) actor.playerAnim.SetBool("IsBlocking", false);
     }
 
     public override void Tick()
     {
         base.Tick();
         actor.body.vel.x = actor.inp.moveX * actor.runSpeed * 0.35f;
+
+        // 维持时间越久，格挡效果越弱：
+        // 前 18 帧 (约 0.3s) 为稳态 (100%)，其后在 192 帧 (约 3.2s) 内线性衰减至 30% 最低稳态
+        float decayProgress = Mathf.Clamp01(Mathf.Max(0, Frame - 18) / 192f);
+        GuardEfficiency = Mathf.Lerp(1.0f, 0.30f, decayProgress);
+
+        // 长时间维持格挡消耗少量架势（每秒 6.5 点，最低保留 15 点，不自爆留给攻击打破）
+        if (Frame > 60 && actor.poise > 15f)
+        {
+            actor.poise = Mathf.Max(15f, actor.poise - (6.5f / 60f) * (1.1f - GuardEfficiency));
+        }
+
+        // 保持按住格挡按键不放；松开且超过起手保护帧才退出
         if (!actor.inp.blockHeld && Frame > 4)
+        {
             actor.ChangeState(new GroundedState(actor));
+        }
     }
 
-    /// <summary>被命中时结算：弹反窗内=弹反，否则普通格挡。</summary>
+    /// <summary>被命中时结算：弹反窗内=弹反，否则普通格挡；维持越久减伤越弱、架势承压越高；架势归零触发强制弹刀僵直。</summary>
     public void ResolveHit(HitInfo h, CombatActor attacker)
     {
         if (Frame >= 6 && Frame <= 10 && attacker != null)
@@ -506,6 +531,7 @@ public class BlockState : ActorState
             actor.chi = Mathf.Min(actor.maxChi, actor.chi + 8f);
             actor.GainIntent(2);
             if (actor.intent >= 3) actor.ArmBloom();
+            actor.poise = Mathf.Min(actor.maxPoise > 0f ? actor.maxPoise : 100f, actor.poise + 25f);
             actor.freezeFrames = Mathf.Max(actor.freezeFrames, 2);
             actor.TriggerAnim("ParrySuccess");
             CombatDirector.Msg("弹反!", actor.body.pos + new Vector2(0, 2f), new Color(1f, 0.85f, 0.3f), 45);
@@ -514,13 +540,48 @@ public class BlockState : ActorState
         }
         else
         {
-            actor.hp -= h.damage * 0.15f;
+            // 普通格挡：维持时间越久，减伤越弱（从 12% 漏伤逐步上升到 50% 漏伤）
+            float chipDamageRate = Mathf.Lerp(0.50f, 0.12f, GuardEfficiency);
+            actor.hp -= h.damage * chipDamageRate;
+
+            // 架势伤害：受当前格挡效能影响急剧加剧（最高承压 3.3 倍）
+            float basePoiseDamage = (h.poise > 0f) ? h.poise : 28f;
+            float poiseDmg = basePoiseDamage / Mathf.Max(0.25f, GuardEfficiency);
+            actor.poise -= poiseDmg;
+
             actor.freezeFrames = Mathf.Max(actor.freezeFrames, 2);
             if (attacker != null) attacker.freezeFrames = Mathf.Max(attacker.freezeFrames, 2);
+
+            if (actor.hp <= 0f)
+            {
+                actor.hp = 0f;
+                actor.Die();
+                return;
+            }
+
+            // 受到一定攻击架势耗尽破防：【强制结束弹刀，并且陷入长僵直】！
+            if (actor.poise <= 0f)
+            {
+                actor.poise = actor.maxPoise > 0f ? actor.maxPoise : 100f; // 重置架势
+                if (actor.playerAnim != null)
+                {
+                    actor.playerAnim.SetBool("IsBlocking", false);
+                    actor.playerAnim.Play("BlockHit", 0, 0f);
+                }
+                CombatDirector.Msg("弹刀破防!", actor.body.pos + new Vector2(0, 1.9f), new Color(1f, 0.25f, 0.15f), 70);
+                CombatDirector.Shake(0.35f, 15);
+                CombatDirector.SlowMo(0.5f, 6);
+                // 弹刀受力击退
+                actor.body.vel.x = (attacker != null ? (int)Mathf.Sign(actor.body.pos.x - attacker.body.pos.x) : -actor.facing) * 4.5f;
+                // 转入 75 帧 (1.25 秒) 破防大僵直
+                actor.ChangeState(new HitstunState(actor, 75, true));
+                return;
+            }
+
+            // 未破防：正常格挡受击响应
             actor.body.vel.x = (attacker != null ? (int)Mathf.Sign(actor.body.pos.x - attacker.body.pos.x) : -actor.facing) * 2f;
             actor.TriggerAnim("BlockHit");
-            CombatDirector.Msg("格挡", actor.body.pos + new Vector2(0, 1.9f), new Color(0.7f, 0.8f, 0.9f), 25);
-            if (actor.hp <= 0f) { actor.hp = 0f; actor.Die(); }
+            CombatDirector.Msg($"格挡 (效能{Mathf.RoundToInt(GuardEfficiency * 100)}%)", actor.body.pos + new Vector2(0, 1.9f), new Color(0.7f, 0.85f, 0.95f), 25);
         }
     }
 }
