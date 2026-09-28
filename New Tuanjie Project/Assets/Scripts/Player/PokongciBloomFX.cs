@@ -33,6 +33,7 @@ public class PokongciBloomFX : MonoBehaviour
     private Sprite shockwaveSprite;
     private Sprite voidConeSprite;
     private Sprite flyingSwordSprite;
+    private Sprite yinjianjueSwordSprite;
     private Sprite frostDecalSprite;
     private Sprite spatialRiftSprite;
     private Sprite particleDotSprite;
@@ -59,16 +60,19 @@ public class PokongciBloomFX : MonoBehaviour
         // 4. 悬浮青灵飞剑 (Flying Sword)
         flyingSwordSprite = CreateFlyingSword(200, 48);
 
-        // 5. 地表冰霜裂痕 (Frost Decal)
+        // 5. 引剑诀专属华丽青锋神剑 (Ornate Flying Sword with Grip Pivot)
+        yinjianjueSwordSprite = CreateOrnateFlyingSword(256, 64);
+
+        // 6. 地表冰霜裂痕 (Frost Decal)
         frostDecalSprite = CreateFrostDecal(512, 64);
 
-        // 6. 空间裂痕 (Spatial Rift)
+        // 7. 空间裂痕 (Spatial Rift)
         spatialRiftSprite = CreateSpatialRift(512, 48);
 
-        // 7. 发光星尘粒子
-                particleDotSprite = CreateParticleDot(32, 32);
+        // 8. 发光星尘粒子
+        particleDotSprite = CreateParticleDot(32, 32);
 
-        // 8. 狂草残月剑芒 (Crescent Blade Slash)
+        // 9. 狂草残月剑芒 (Crescent Blade Slash)
         crescentSlashSprite = CreateCrescentSlash(512, 256);
 
         // 查找或创建通用材质
@@ -187,6 +191,381 @@ public class PokongciBloomFX : MonoBehaviour
 
         // 落地星火
         SpawnSwordStar(groundTip, 1.0f * radiusScale, 0.15f);
+    }
+
+    // =========================================================================
+    // 【引剑诀·流光溯影 (QF-4) 专属电影级飞剑与合刃特效系统】
+    // =========================================================================
+
+    /// <summary>
+    /// 【引剑诀·F1】结印·引灵指：两手空空，指尖聚灵青光流溢
+    /// </summary>
+    public void PlayYinjianjueF1Gather(Transform caster, bool flipX)
+    {
+        float dir = flipX ? -1f : 1f;
+        Vector3 pos = caster.position + new Vector3(dir * 0.22f, 0.65f, 0f);
+        StartCoroutine(YinjianjueF1GatherRoutine(pos));
+    }
+
+    private IEnumerator YinjianjueF1GatherRoutine(Vector3 pos)
+    {
+        GameObject orb = new GameObject("VFX_Yinjianjue_F1Orb");
+        orb.transform.position = pos;
+        orb.transform.localScale = Vector3.zero;
+        SpriteRenderer sr = orb.AddComponent<SpriteRenderer>();
+        sr.sprite = starburstSprite;
+        sr.color = new Color(0.2f, 0.95f, 1f, 0.95f);
+        sr.sortingOrder = 22;
+
+        float dur = 0.12f;
+        float el = 0f;
+        while (el < dur)
+        {
+            el += Time.deltaTime;
+            float t = el / dur;
+            float s = Mathf.Sin(t * Mathf.PI) * 0.85f;
+            orb.transform.localScale = Vector3.one * s;
+            yield return null;
+        }
+        Destroy(orb);
+    }
+
+    /// <summary>
+    /// 【引剑诀·F2】遥召·破空鸣：剑指前伸凌空激荡音爆冲击环与飞射风线
+    /// </summary>
+    public void PlayYinjianjueF2SonicBoom(Transform caster, bool flipX)
+    {
+        float dir = flipX ? -1f : 1f;
+        Vector3 pos = caster.position + new Vector3(dir * 0.65f, 0.68f, 0f);
+        StartCoroutine(YinjianjueF2SonicBoomRoutine(pos, dir));
+    }
+
+    private IEnumerator YinjianjueF2SonicBoomRoutine(Vector3 pos, float dir)
+    {
+        // 1. 微型音爆冲击环
+        GameObject ring = new GameObject("VFX_Yinjianjue_SonicRing");
+        ring.transform.position = pos;
+        ring.transform.localScale = Vector3.one * 0.2f;
+        SpriteRenderer sr = ring.AddComponent<SpriteRenderer>();
+        sr.sprite = shockwaveSprite;
+        sr.color = new Color(0.4f, 1f, 1f, 0.9f);
+        sr.sortingOrder = 22;
+        StartCoroutine(ExpandAndFade(ring, sr, 0.14f, 1.5f));
+
+        // 2. 指尖破空星芒
+        SpawnSwordStar(pos, 0.85f, 0.12f);
+
+        // 3. 喷射气流星火
+        for (int i = 0; i < 6; i++)
+        {
+            GameObject spark = new GameObject("VFX_SonicSpark");
+            spark.transform.position = pos;
+            SpriteRenderer ssr = spark.AddComponent<SpriteRenderer>();
+            ssr.sprite = particleDotSprite;
+            ssr.color = Color.white;
+            ssr.sortingOrder = 23;
+            Vector2 vel = new Vector2(dir * Random.Range(4f, 8f), Random.Range(-1.5f, 1.5f));
+            StartCoroutine(AnimateSpark(spark, vel, 0.12f));
+        }
+
+        TriggerCameraShake(0.08f, 0.05f);
+        yield return null;
+    }
+
+    /// <summary>
+    /// 【引剑诀·F3~F4】白虹贯日：天外独立飞剑实体高速直线贯通全屏，刺穿沿途敌人！
+    /// </summary>
+    public void LaunchYinjianjueFlyingSword(Transform caster, bool flipX, float flyDuration, System.Action onCatch = null)
+    {
+        StartCoroutine(FlyingSwordRecallRoutine(caster, flipX, flyDuration, onCatch));
+    }
+
+    private IEnumerator FlyingSwordRecallRoutine(Transform caster, bool flipX, float flyDuration, System.Action onCatch)
+    {
+        float dir = flipX ? -1f : 1f;
+        // 屏幕天际远处生成 (距离角色 10.5m)
+        Vector3 spawnPos = caster.position + new Vector3(dir * 10.5f, 0.85f, 0f);
+        Vector3 targetHandOffset = new Vector3(dir * 0.50f, 0.65f, 0f);
+
+        // 1. 构建独立物理与视觉实体 GameObject
+        GameObject swordGo = new GameObject("VFX_Yinjianjue_FlyingSwordEntity");
+        swordGo.transform.position = spawnPos;
+        swordGo.transform.localScale = new Vector3(dir * 0.85f, 0.85f, 1f);
+
+        SpriteRenderer swordSr = swordGo.AddComponent<SpriteRenderer>();
+        swordSr.sprite = yinjianjueSwordSprite != null ? yinjianjueSwordSprite : flyingSwordSprite;
+        swordSr.sortingOrder = 28;
+        swordSr.color = Color.white;
+
+        // 2. 附加剑体外沿高光灵晕 (Aura Glow)
+        GameObject glowGo = new GameObject("AuraGlow");
+        glowGo.transform.SetParent(swordGo.transform, false);
+        glowGo.transform.localPosition = Vector3.zero;
+        glowGo.transform.localScale = new Vector3(1.15f, 1.45f, 1f);
+        SpriteRenderer glowSr = glowGo.AddComponent<SpriteRenderer>();
+        glowSr.sprite = swordSr.sprite;
+        glowSr.sortingOrder = 27;
+        glowSr.color = new Color(0.2f, 0.9f, 1f, 0.60f);
+
+        // 3. 附加剑尾超音速光锥激光尾焰 (Laser Beam Wake)
+        GameObject wakeGo = new GameObject("LaserBeamWake");
+        wakeGo.transform.SetParent(swordGo.transform, false);
+        wakeGo.transform.localPosition = new Vector3(1.75f, 0f, 0f);
+        wakeGo.transform.localScale = new Vector3(2.5f, 0.35f, 1f);
+        SpriteRenderer wakeSr = wakeGo.AddComponent<SpriteRenderer>();
+        wakeSr.sprite = voidConeSprite;
+        wakeSr.sortingOrder = 25;
+        wakeSr.color = new Color(0.35f, 0.95f, 1f, 0.75f);
+
+        // 4. 飞行与贯穿循环 (0.24s 内疾驰 10米)
+        float elapsed = 0f;
+        float nextShadowTime = 0f;
+        float nextSparkTime = 0f;
+        int ringCount = 0;
+        HashSet<CombatActor> hitActors = new HashSet<CombatActor>();
+
+        while (elapsed < flyDuration)
+        {
+            float dt = Time.deltaTime;
+            elapsed += dt;
+            float t = Mathf.Clamp01(elapsed / flyDuration);
+
+            // 极速冲入 + 近身微制动锁定手心 (SmoothStep)
+            float motionCurve = Mathf.SmoothStep(0f, 1f, t);
+            Vector3 curTarget = caster != null ? (caster.position + targetHandOffset) : (spawnPos + targetHandOffset);
+            Vector3 curPos = Vector3.Lerp(spawnPos, curTarget, motionCurve);
+            swordGo.transform.position = curPos;
+
+            // 水墨青碧高速残影
+            if (elapsed >= nextShadowTime)
+            {
+                nextShadowTime = elapsed + 0.03f;
+                SpawnSwordGhostShadow(curPos, swordSr.sprite, dir, t);
+            }
+
+            // 刺破空气的摩擦星火
+            if (elapsed >= nextSparkTime)
+            {
+                nextSparkTime = elapsed + 0.02f;
+                SpawnAerodynamicSpark(curPos, dir);
+            }
+
+            // 同轴音爆环
+            if (t >= 0.28f && t <= 0.35f && ringCount == 0)
+            {
+                ringCount++;
+                SpawnInFlightSonicRing(curPos);
+            }
+            else if (t >= 0.65f && t <= 0.72f && ringCount == 1)
+            {
+                ringCount++;
+                SpawnInFlightSonicRing(curPos);
+            }
+
+            // 飞剑临近手心 1 米范围 (F4候刃阶段)：手心与剑首之间剧烈摩擦火花喷射！
+            if (t > 0.70f)
+            {
+                Vector3 palmPos = caster != null ? (caster.position + targetHandOffset) : curTarget;
+                SpawnHandFrictionSpark(Vector3.Lerp(curPos, palmPos, Random.value));
+            }
+
+            // 贯穿途中判定敌人伤害 (支持 CombatActor)
+            CheckSwordPierceEnemies(curPos, hitActors, caster);
+
+            yield return null;
+        }
+
+        // 到达手心，销毁飞行剑实体，释放合刃握柄爆鸣
+        Destroy(swordGo);
+        onCatch?.Invoke();
+    }
+
+    private void SpawnSwordGhostShadow(Vector3 pos, Sprite sprite, float dir, float t)
+    {
+        if (sprite == null) return;
+        GameObject go = new GameObject("VFX_SwordGhost");
+        go.transform.position = pos;
+        go.transform.localScale = new Vector3(dir * 0.85f, 0.85f, 1f);
+        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = sprite;
+        sr.sortingOrder = 26;
+        sr.color = new Color(0.2f, 0.85f, 1f, 0.55f);
+        StartCoroutine(FadeAndDestroy(go, 0.12f));
+    }
+
+    private void SpawnAerodynamicSpark(Vector3 pos, float dir)
+    {
+        GameObject spark = new GameObject("VFX_AeroSpark");
+        spark.transform.position = pos + (Vector3)(Random.insideUnitCircle * 0.15f);
+        SpriteRenderer sr = spark.AddComponent<SpriteRenderer>();
+        sr.sprite = particleDotSprite;
+        sr.sortingOrder = 29;
+        sr.color = Random.value > 0.4f ? Color.white : new Color(0.3f, 0.95f, 1f, 1f);
+        spark.transform.localScale = Vector3.one * Random.Range(0.3f, 0.7f);
+        Vector2 vel = new Vector2(dir * Random.Range(3f, 7f), Random.Range(-1.2f, 1.2f));
+        StartCoroutine(AnimateSpark(spark, vel, 0.10f));
+    }
+
+    private void SpawnInFlightSonicRing(Vector3 pos)
+    {
+        GameObject ring = new GameObject("VFX_FlightSonicRing");
+        ring.transform.position = pos;
+        ring.transform.localScale = Vector3.one * 0.3f;
+        SpriteRenderer sr = ring.AddComponent<SpriteRenderer>();
+        sr.sprite = shockwaveSprite;
+        sr.color = new Color(0.25f, 0.95f, 1f, 0.85f);
+        sr.sortingOrder = 26;
+        StartCoroutine(ExpandAndFade(ring, sr, 0.18f, 1.8f));
+    }
+
+    private void SpawnHandFrictionSpark(Vector3 pos)
+    {
+        GameObject spark = new GameObject("VFX_HandFrictionSpark");
+        spark.transform.position = pos + (Vector3)(Random.insideUnitCircle * 0.10f);
+        SpriteRenderer sr = spark.AddComponent<SpriteRenderer>();
+        sr.sprite = particleDotSprite;
+        sr.sortingOrder = 30;
+        sr.color = Random.value > 0.5f ? Color.white : new Color(1f, 0.95f, 0.4f, 1f);
+        spark.transform.localScale = Vector3.one * Random.Range(0.4f, 0.8f);
+        Vector2 vel = Random.insideUnitCircle.normalized * Random.Range(2f, 5f);
+        StartCoroutine(AnimateSpark(spark, vel, 0.10f));
+    }
+
+    private void CheckSwordPierceEnemies(Vector3 swordPos, HashSet<CombatActor> hitActors, Transform caster)
+    {
+        CombatActor[] allActors = Object.FindObjectsOfType<CombatActor>();
+        if (allActors == null || allActors.Length == 0) return;
+
+        CombatActor casterActor = caster != null ? caster.GetComponent<CombatActor>() : null;
+
+        for (int i = 0; i < allActors.Length; i++)
+        {
+            CombatActor actor = allActors[i];
+            if (actor == null || actor.isPlayer || hitActors.Contains(actor)) continue;
+
+            float dist = Vector2.Distance(swordPos, actor.transform.position + new Vector3(0, 0.5f, 0));
+            if (dist < 1.1f)
+            {
+                hitActors.Add(actor);
+                HitInfo h = new HitInfo
+                {
+                    damage = 18f,
+                    poise = 12f,
+                    hitstun = 18,
+                    hitstop = 3,
+                    unblockable = false,
+                    attacker = casterActor,
+                    moveId = "QF-4_Pierce"
+                };
+                actor.ApplyHit(h, casterActor);
+                SpawnSwordStar(actor.transform.position + new Vector3(0, 0.5f, 0), 1.0f, 0.12f);
+                SpawnSlashSparks(actor.transform.position + new Vector3(0, 0.5f, 0), 8, 0.8f, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 【引剑诀·F5】握柄·雷爆定：五指死死咬合剑柄！环形水墨冲击波 + 0.08s全屏时空凝滞 + 镜头暴震
+    /// </summary>
+    public void PlayYinjianjueF5Catch(Transform caster, bool flipX)
+    {
+        float dir = flipX ? -1f : 1f;
+        Vector3 handPos = caster.position + new Vector3(dir * 0.50f, 0.65f, 0f);
+
+        // 1. 2.6米直径极速扩散青白水墨冲击波环
+        GameObject ring = new GameObject("VFX_Yinjianjue_CatchShockwave");
+        ring.transform.position = handPos;
+        ring.transform.localScale = Vector3.one * 0.4f;
+        SpriteRenderer ringSr = ring.AddComponent<SpriteRenderer>();
+        ringSr.sprite = shockwaveSprite;
+        ringSr.color = new Color(0.2f, 0.95f, 1f, 0.95f);
+        ringSr.sortingOrder = 30;
+        StartCoroutine(ExpandAndFade(ring, ringSr, 0.25f, 2.6f));
+
+        // 2. 手心万钧合刃十字极光星芒
+        GameObject star = new GameObject("VFX_Yinjianjue_CatchStarburst");
+        star.transform.position = handPos;
+        star.transform.localScale = Vector3.one * 2.0f;
+        SpriteRenderer starSr = star.AddComponent<SpriteRenderer>();
+        starSr.sprite = starburstSprite;
+        starSr.color = Color.white;
+        starSr.sortingOrder = 31;
+        StartCoroutine(FadeAndScale(star, starSr, 0.20f, 1.5f));
+
+        // 3. 26 颗极速辐射星火爆裂
+        SpawnSlashSparks(handPos, 26, 1.8f, true);
+
+        // 4. 镜头剧烈暴震 (Camera Trauma Shake)
+        TriggerCameraShake(0.35f, 0.14f);
+
+        // 5. 近身爆发范围判定 (Active 2)
+        CombatActor[] allActors = Object.FindObjectsOfType<CombatActor>();
+        if (allActors != null && allActors.Length > 0)
+        {
+            CombatActor casterActor = caster != null ? caster.GetComponent<CombatActor>() : null;
+            for (int i = 0; i < allActors.Length; i++)
+            {
+                CombatActor actor = allActors[i];
+                if (actor == null || actor.isPlayer) continue;
+
+                float dist = Vector2.Distance(handPos, actor.transform.position + new Vector3(0, 0.5f, 0));
+                if (dist < 2.2f)
+                {
+                    HitInfo h = new HitInfo
+                    {
+                        damage = 32f,
+                        poise = 20f,
+                        hitstun = 28,
+                        hitstop = 5,
+                        unblockable = true,
+                        attacker = casterActor,
+                        moveId = "QF-4_CatchBurst"
+                    };
+                    actor.ApplyHit(h, casterActor);
+                    SpawnSwordStar(actor.transform.position + new Vector3(0, 0.5f, 0), 1.4f, 0.16f);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 【引剑诀·F6】旋腕·剑花破：顺势反手挽出360°水墨残月剑花
+    /// </summary>
+    public void PlayYinjianjueF6SwordFlourish(Transform caster, bool flipX)
+    {
+        float dir = flipX ? -1f : 1f;
+        Vector3 center = caster.position + new Vector3(dir * 0.40f, 0.65f, 0f);
+
+        // 360°水墨残月剑芒
+        float angle = flipX ? 150f : 30f;
+        SpawnCrescentSlash(center, angle, new Vector2(2.5f, 1.8f), new Color(0.35f, 1f, 0.95f, 0.9f), 0.18f);
+
+        // 剑花尖梢星爆
+        SpawnSwordStar(center + new Vector3(dir * 0.8f, 0.15f, 0f), 1.2f, 0.14f);
+        TriggerCameraShake(0.12f, 0.06f);
+    }
+
+    /// <summary>
+    /// 【引剑诀·F7】拂袖·振刃鸣：长身而起，大袖拂过剑脊，碎钻星尘粒子飘落
+    /// </summary>
+    public void PlayYinjianjueF7Stardust(Transform caster, bool flipX)
+    {
+        float dir = flipX ? -1f : 1f;
+        Vector3 bladePos = caster.position + new Vector3(dir * 0.55f, 0.65f, 0f);
+
+        for (int i = 0; i < 14; i++)
+        {
+            GameObject dot = new GameObject("VFX_StardustBlade");
+            dot.transform.position = bladePos + new Vector3(Random.Range(-0.4f, 0.4f), Random.Range(-0.15f, 0.15f), 0f);
+            SpriteRenderer sr = dot.AddComponent<SpriteRenderer>();
+            sr.sprite = particleDotSprite;
+            sr.color = Random.value > 0.4f ? Color.white : new Color(0.3f, 0.95f, 1f, 0.9f);
+            sr.sortingOrder = 24;
+            dot.transform.localScale = Vector3.one * Random.Range(0.3f, 0.7f);
+
+            Vector2 vel = new Vector2(Random.Range(-0.6f, 0.6f), Random.Range(-0.8f, -0.2f));
+            StartCoroutine(AnimateSpark(dot, vel, Random.Range(0.25f, 0.45f)));
+        }
     }
 
     private void SpawnCrescentSlash(Vector3 pos, float angleDeg, Vector2 scale, Color color, float life)
@@ -856,5 +1235,69 @@ public class PokongciBloomFX : MonoBehaviour
         tex.SetPixels(cols);
         tex.Apply();
         return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
+    }
+
+    private Sprite CreateOrnateFlyingSword(int w, int h)
+    {
+        Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Bilinear;
+        Color[] cols = new Color[w * h];
+
+        for (int y = 0; y < h; y++)
+        {
+            float ny = Mathf.Abs(((float)y / h) - 0.5f) * 2f; // 0 (中脊) ~ 1 (外沿)
+            for (int x = 0; x < w; x++)
+            {
+                float nx = (float)x / w; // 0 (剑首/剑柄) ~ 1 (剑尖)
+                Color col = Color.clear;
+
+                if (nx < 0.04f)
+                {
+                    // 剑首金环 (Pommel Ring)
+                    if (ny < 0.35f) col = new Color(1f, 0.85f, 0.4f, 0.95f);
+                }
+                else if (nx < 0.15f)
+                {
+                    // 剑柄缠绳 (Wrapped Hilt)
+                    if (ny < 0.22f)
+                    {
+                        int stripe = Mathf.FloorToInt(nx * 80f) % 2;
+                        col = stripe == 0 ? new Color(0.15f, 0.2f, 0.28f, 0.95f) : new Color(0.35f, 0.5f, 0.65f, 0.95f);
+                    }
+                }
+                else if (nx < 0.20f)
+                {
+                    // 飞翼金护手 / 剑格 (Ornate Golden Crossguard)
+                    float guardW = 0.70f * (1f - Mathf.Abs(nx - 0.175f) / 0.025f);
+                    if (ny < guardW) col = new Color(1f, 0.9f, 0.45f, 1f);
+                }
+                else
+                {
+                    // 双刃青锋剑体 (0.20 ~ 1.0)
+                    float bladeNorm = (nx - 0.20f) / 0.80f;
+                    float bw = bladeNorm < 0.85f ? 0.38f : 0.38f * (1f - bladeNorm) / 0.15f;
+
+                    if (ny < bw)
+                    {
+                        float spine = 1f - (ny / Mathf.Max(0.001f, bw));
+                        // 剑心纯白光华，剑刃高亮天青寒芒
+                        Color coreCol = Color.Lerp(new Color(0.15f, 0.9f, 1f, 0.95f), Color.white, spine * spine);
+                        col = coreCol;
+                    }
+                    else if (ny < bw + 0.18f)
+                    {
+                        // 剑身周遭灵光虚影 (Ethereal Qi Aura)
+                        float glow = 1f - (ny - bw) / 0.18f;
+                        col = new Color(0.12f, 0.85f, 1f, glow * 0.65f);
+                    }
+                }
+
+                cols[y * w + x] = col;
+            }
+        }
+        tex.SetPixels(cols);
+        tex.Apply();
+        // Pivot 设置在剑柄握手处 (0.10f, 0.5f)，使得旋转与抓握精准对齐手心！
+        return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.10f, 0.5f), 100f);
     }
 }

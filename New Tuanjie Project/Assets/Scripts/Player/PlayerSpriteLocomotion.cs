@@ -1311,32 +1311,53 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             // F8: 敛息·垂剑立 (0.16s) - 从容反手垂剑，气沉丹田切回待机
             float[] frameDurations = new float[] { 0.12f, 0.12f, 0.14f, 0.10f, 0.18f, 0.12f, 0.12f, 0.16f };
 
-            // F1~F4: 虚引唤剑 (Hands empty, pulling flying sword)
-            for (int i = 0; i < 4; i++)
-            {
-                if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueSprites[i];
-                yield return new WaitForSeconds(frameDurations[i]);
-            }
+            // F1: 结印·引灵指 (0.12s) - 手中无剑，剑指横胸聚气，指尖灵光凝聚
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueSprites[0];
+            PokongciBloomFX.Instance.PlayYinjianjueF1Gather(transform, origFlip);
+            yield return new WaitForSeconds(frameDurations[0]);
 
-            // F5: 暴烈握柄定格 (Violent Sword Catch & Chrono Hitstop)
+            // F2: 遥召·破空鸣 (0.12s) - 剑指前伸凌空遥指，音爆波纹扩散呼啸唤剑
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueSprites[1];
+            PokongciBloomFX.Instance.PlayYinjianjueF2SonicBoom(transform, origFlip);
+            yield return new WaitForSeconds(frameDurations[1]);
+
+            // F3: 牵引·流光穿 (0.14s) - 飞剑横贯全屏高速呼啸而来！白虹贯日！
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueSprites[2];
+            float flightDuration = frameDurations[2] + frameDurations[3]; // F3+F4 共 0.24s 穿透全屏精准归手
+            PokongciBloomFX.Instance.LaunchYinjianjueFlyingSword(transform, origFlip, flightDuration);
+            yield return new WaitForSeconds(frameDurations[2]);
+
+            // F4: 候刃·展臂迎 (0.10s) - 飞剑临近掌心，真气剧烈压缩爆发出耀眼摩擦火花
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueSprites[3];
+            yield return new WaitForSeconds(frameDurations[3]);
+
+            // F5: 握柄·雷爆定 (0.18s) - 五指死死咬合剑柄！环形水墨冲击波 + 0.08s全屏时空停滞
             currentActionName = "【飞剑归渊】万钧合刃！";
             if (spriteRenderer != null)
             {
                 spriteRenderer.sprite = yinjianjueSprites[4];
                 spriteRenderer.color = new Color(0.4f, 1f, 1f, 1f); // 耀目光华
             }
+            PokongciBloomFX.Instance.PlayYinjianjueF5Catch(transform, origFlip);
             Time.timeScale = 0.2f;
             yield return new WaitForSecondsRealtime(0.08f);
             Time.timeScale = 1.0f;
             if (spriteRenderer != null) spriteRenderer.color = Color.white;
             yield return new WaitForSeconds(frameDurations[4]);
 
-            // F6~F8: 剑花反旋与收招 (Finishing Flourish & Resonant Sheathing)
-            for (int i = 5; i < 8; i++)
-            {
-                if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueSprites[i];
-                yield return new WaitForSeconds(frameDurations[i]);
-            }
+            // F6: 旋腕·剑花破 (0.12s) - 借回握惯性顺势反手挽出 360° 水墨残月剑花
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueSprites[5];
+            PokongciBloomFX.Instance.PlayYinjianjueF6SwordFlourish(transform, origFlip);
+            yield return new WaitForSeconds(frameDurations[5]);
+
+            // F7: 拂袖·振刃鸣 (0.12s) - 大袖拂过剑脊，剑鸣阵阵，碎钻星尘粒子飘落
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueSprites[6];
+            PokongciBloomFX.Instance.PlayYinjianjueF7Stardust(transform, origFlip);
+            yield return new WaitForSeconds(frameDurations[6]);
+
+            // F8: 敛息·垂剑立 (0.16s) - 从容反手垂剑，气沉丹田，无缝归入待机
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueSprites[7];
+            yield return new WaitForSeconds(frameDurations[7]);
         }
         else
         {
