@@ -49,6 +49,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     [SerializeField] public Sprite[] yijianshuanghanSprites;
     [SerializeField] public Sprite[] yijianshuanghanBloomSprites;
     [SerializeField] public Sprite[] yinjianjueSprites;
+    [SerializeField] public Sprite[] yinjianjueBloomSprites;
     string currentActionName = "待机 (Idle)";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -76,6 +77,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         LoadYijianshuanghanSprites();
         LoadYijianshuanghanBloomSprites();
         LoadYinjianjueSprites();
+        LoadYinjianjueBloomSprites();
     }
 
     public void LoadYijianshuanghanSprites()
@@ -222,6 +224,55 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         else
         {
             Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 8 Yinjianjue sprites from disk (loaded {list.Count}) at {dir}");
+        }
+    }
+
+    public void LoadYinjianjueBloomSprites()
+    {
+#if UNITY_EDITOR
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string p = $"Assets/Sprites/Player/Skills/Yinjianjue_Bloom/yinjianjue-bloom-{i}.png";
+            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+            if (sp != null) list.Add(sp);
+        }
+        if (list.Count >= 8)
+        {
+            yinjianjueBloomSprites = list.ToArray();
+            return;
+        }
+#endif
+        LoadYinjianjueBloomSpritesFromDisk();
+    }
+
+    void LoadYinjianjueBloomSpritesFromDisk()
+    {
+        string dir = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Yinjianjue_Bloom");
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string filePath = System.IO.Path.Combine(dir, $"yinjianjue-bloom-{i}.png");
+            if (System.IO.File.Exists(filePath))
+            {
+                byte[] bytes = System.IO.File.ReadAllBytes(filePath);
+                Texture2D tex = new Texture2D(680, 480, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Bilinear;
+                if (tex.LoadImage(bytes))
+                {
+                    Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.09f), 214f);
+                    list.Add(sp);
+                }
+            }
+        }
+        if (list.Count >= 8)
+        {
+            yinjianjueBloomSprites = list.ToArray();
+            Debug.Log($"[PlayerSpriteLocomotion] Successfully loaded {yinjianjueBloomSprites.Length} Yinjianjue Bloom sprites directly from disk!");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 8 Yinjianjue Bloom sprites from disk (loaded {list.Count}) at {dir}");
         }
     }
 
@@ -1271,6 +1322,12 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     public void TriggerYinjianjue()
     {
         if (isSkillPlaying) return;
+        if (isBloomActive)
+        {
+            TriggerYinjianjueBloom();
+            return;
+        }
+
         if (yinjianjueSprites == null || yinjianjueSprites.Length < 8 || yinjianjueSprites[0] == null)
         {
             LoadYinjianjueSprites();
@@ -1282,6 +1339,23 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         dodgeTimer = 0f;
         StartCoroutine(YinjianjueRoutine());
     }
+
+    public void TriggerYinjianjueBloom()
+    {
+        if (isSkillPlaying) return;
+        if (yinjianjueBloomSprites == null || yinjianjueBloomSprites.Length < 8 || yinjianjueBloomSprites[0] == null)
+        {
+            LoadYinjianjueBloomSprites();
+        }
+        swordIntent = 5;
+        attackStep = 0;
+        attackTimer = 0f;
+        comboWindow = 0f;
+        blockTimer = 0f;
+        dodgeTimer = 0f;
+        StartCoroutine(YinjianjueBloomRoutine());
+    }
+
 
     IEnumerator YinjianjueRoutine()
     {
@@ -1380,12 +1454,114 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         currentActionName = "待机 (Idle)";
     }
 
+    IEnumerator YinjianjueBloomRoutine()
+    {
+        isSkillPlaying = true;
+        currentActionName = "【剑意绽放】极·万剑归宗 (混元归渊 · 冰破乾坤)";
+        swordIntent = 0; // 消耗 5 阶剑意
+
+        if (yinjianjueBloomSprites == null || yinjianjueBloomSprites.Length < 8 || yinjianjueBloomSprites[0] == null)
+        {
+            LoadYinjianjueBloomSprites();
+        }
+
+        if (animator != null) animator.enabled = false;
+
+        Vector3 basePos = transform.position;
+        bool origFlip = spriteRenderer != null && spriteRenderer.flipX;
+
+        if (yinjianjueBloomSprites != null && yinjianjueBloomSprites.Length >= 8 && yinjianjueBloomSprites[0] != null)
+        {
+            // 8 阶段时序：
+            // F1: 剑阵起势·万道朝宗 (0.10s)
+            // F2: 雷霆破晓·神剑初醒 (0.12s)
+            // F3: 白虹贯日·太虚横空 (0.14s)
+            // F4: 混元归渊·诸天合一 (0.12s)
+            // F5: 极·万钧合刃·冰破乾坤 (0.20s)
+            // F6: 八荒扫尽·万劫成空 (0.14s)
+            // F7: 龙吟归袖·风雷渐歇 (0.14s)
+            // F8: 万道归一·天人合道 (0.18s)
+            float[] frameDurations = new float[] { 0.10f, 0.12f, 0.14f, 0.12f, 0.20f, 0.14f, 0.14f, 0.18f };
+
+            // 绽放专属青金神光
+            if (spriteRenderer != null) spriteRenderer.color = new Color(0.7f, 1f, 1f, 1f);
+
+            // F1: 剑阵起势 (0.10s)
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueBloomSprites[0];
+            PokongciBloomFX.Instance.PlayYinjianjueF1Gather(transform, origFlip);
+            yield return new WaitForSeconds(frameDurations[0]);
+
+            // F2: 雷霆破晓 (0.12s)
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueBloomSprites[1];
+            PokongciBloomFX.Instance.PlayYinjianjueF2SonicBoom(transform, origFlip);
+            PokongciBloomFX.Instance.TriggerCameraShake(0.18f, 0.08f);
+            yield return new WaitForSeconds(frameDurations[1]);
+
+            // F3: 白虹贯日 (0.14s) - 混元万剑齐发贯穿全屏
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueBloomSprites[2];
+            float flightDuration = frameDurations[2] + frameDurations[3]; // 0.26s
+            PokongciBloomFX.Instance.LaunchYinjianjueBloomSwordTempest(transform, origFlip, flightDuration);
+            yield return new WaitForSeconds(frameDurations[2]);
+
+            // F4: 混元归渊 (0.12s)
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueBloomSprites[3];
+            yield return new WaitForSeconds(frameDurations[3]);
+
+            // F5: 极·万钧合刃 (0.20s) - 双层金青震波 + 巨型极光星芒 + 顿帧0.12s
+            currentActionName = "【万剑归宗】极·万钧合刃！";
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.sprite = yinjianjueBloomSprites[4];
+                spriteRenderer.color = new Color(0.4f, 1f, 1f, 1f);
+            }
+            PokongciBloomFX.Instance.PlayYinjianjueBloomF5Catch(transform, origFlip);
+            Time.timeScale = 0.15f;
+            yield return new WaitForSecondsRealtime(0.12f);
+            Time.timeScale = 1.0f;
+            if (spriteRenderer != null) spriteRenderer.color = new Color(0.8f, 1f, 1f, 1f);
+            yield return new WaitForSeconds(frameDurations[4]);
+
+            // F6: 八荒扫尽 (0.14s) - 双重金青太虚残月剑气
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueBloomSprites[5];
+            PokongciBloomFX.Instance.PlayYinjianjueBloomF6Flourish(transform, origFlip);
+            yield return new WaitForSeconds(frameDurations[5]);
+
+            // F7: 龙吟归袖 (0.14s)
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueBloomSprites[6];
+            PokongciBloomFX.Instance.PlayYinjianjueF7Stardust(transform, origFlip);
+            yield return new WaitForSeconds(frameDurations[6]);
+
+            // F8: 万道归一 (0.18s)
+            if (spriteRenderer != null) spriteRenderer.sprite = yinjianjueBloomSprites[7];
+            yield return new WaitForSeconds(frameDurations[7]);
+        }
+        else
+        {
+            if (animator != null)
+            {
+                animator.enabled = true;
+                animator.Play("HeavyThrust", 0, 0f);
+            }
+            yield return new WaitForSeconds(0.40f);
+        }
+
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.flipX = origFlip;
+            spriteRenderer.color = Color.white;
+        }
+
+        if (animator != null) animator.enabled = true;
+        isSkillPlaying = false;
+        currentActionName = "待机 (Idle)";
+    }
+
     void OnGUI()
     {
         // 仅在独立预览模式下绘制操控面板
         if (combat != null) return;
 
-        GUILayout.BeginArea(new Rect(20, 20, 430, 520), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(20, 20, 440, 570), GUI.skin.box);
         GUILayout.Label("<b><size=15>【刀影江湖 · 青锋动作与技能预览台】</size></b>");
         GUILayout.Space(4);
         GUILayout.Label($"<b>当前动作：</b><color=#00ff88>{currentActionName}</color>");
@@ -1452,12 +1628,21 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.Space(6);
-        GUILayout.Label("<b>--- 技能4：引剑诀 · 流光溯影 (天外飞剑贯通归鞘 R/P) ---</b>");
+        GUILayout.Label("<b>--- 技能4：引剑诀 · 流光溯影 / 极·万剑归宗 (天外飞剑贯通归鞘 R/P) ---</b>");
         GUILayout.BeginHorizontal();
         GUI.color = new Color(0.2f, 1f, 0.85f);
-        if (GUILayout.Button("★ 引剑诀 · 流光溯影 (虚引飞剑+全屏贯通+强力合刃)", GUILayout.Height(30)))
+        if (GUILayout.Button("常态引剑诀 (飞剑贯通+强力合刃)", GUILayout.Height(30)))
         {
-            TriggerYinjianjue();
+            if (yinjianjueSprites == null || yinjianjueSprites.Length < 8 || yinjianjueSprites[0] == null)
+            {
+                LoadYinjianjueSprites();
+            }
+            StartCoroutine(YinjianjueRoutine());
+        }
+        GUI.color = new Color(1f, 0.85f, 0.2f);
+        if (GUILayout.Button("★ 极·万剑归宗 (混元归渊·冰破乾坤)", GUILayout.Height(30)))
+        {
+            TriggerYinjianjueBloom();
         }
         GUI.color = Color.white;
         GUILayout.EndHorizontal();

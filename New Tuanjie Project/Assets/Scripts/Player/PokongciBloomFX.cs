@@ -568,6 +568,160 @@ public class PokongciBloomFX : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 【万剑归宗·绽放】F3~F4 混元万剑归渊：主神剑 + 6柄金青灵剑交错横穿全屏汇聚掌心
+    /// </summary>
+    public void LaunchYinjianjueBloomSwordTempest(Transform caster, bool flipX, float flyDuration, System.Action onCatch = null)
+    {
+        StartCoroutine(FlyingSwordRecallRoutine(caster, flipX, flyDuration, onCatch));
+        StartCoroutine(BloomSubSwordsRoutine(caster, flipX, flyDuration));
+    }
+
+    private IEnumerator BloomSubSwordsRoutine(Transform caster, bool flipX, float totalDuration)
+    {
+        float dir = flipX ? -1f : 1f;
+        int subCount = 6;
+        float[] yOffsets = new float[] { -0.8f, -0.4f, 0.2f, 0.6f, 1.0f, 1.4f };
+        float[] delayTimes = new float[] { 0.01f, 0.03f, 0.05f, 0.02f, 0.04f, 0.06f };
+
+        for (int i = 0; i < subCount; i++)
+        {
+            float yOff = yOffsets[i];
+            float delay = delayTimes[i];
+            StartCoroutine(SingleSubSwordRoutine(caster, dir, yOff, delay, totalDuration));
+        }
+        yield break;
+    }
+
+    private IEnumerator SingleSubSwordRoutine(Transform caster, float dir, float yOff, float delay, float totalDuration)
+    {
+        if (delay > 0f) yield return new WaitForSeconds(delay);
+
+        float duration = totalDuration - delay;
+        if (duration <= 0.05f) duration = 0.15f;
+
+        Vector3 spawnPos = caster.position + new Vector3(dir * (11.0f + Random.Range(0f, 2f)), 0.75f + yOff, 0f);
+        Vector3 targetHandOffset = new Vector3(dir * 0.50f, 0.65f, 0f);
+
+        GameObject subGo = new GameObject("VFX_BloomSubSword");
+        subGo.transform.position = spawnPos;
+        subGo.transform.localScale = new Vector3(dir * 0.65f, 0.65f, 1f);
+
+        SpriteRenderer sr = subGo.AddComponent<SpriteRenderer>();
+        sr.sprite = yinjianjueSwordSprite != null ? yinjianjueSwordSprite : flyingSwordSprite;
+        sr.sortingOrder = 27;
+        sr.color = Random.value > 0.5f ? new Color(1f, 0.9f, 0.3f, 0.9f) : new Color(0.3f, 0.95f, 1f, 0.9f);
+
+        float elapsed = 0f;
+        HashSet<CombatActor> hitActors = new HashSet<CombatActor>();
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float curve = Mathf.SmoothStep(0f, 1f, t);
+
+            Vector3 curTarget = caster != null ? (caster.position + targetHandOffset) : (spawnPos + targetHandOffset);
+            Vector3 curPos = Vector3.Lerp(spawnPos, curTarget, curve);
+            subGo.transform.position = curPos;
+
+            if (Random.value < 0.35f)
+            {
+                SpawnSwordGhostShadow(curPos, sr.sprite, dir, t);
+            }
+
+            CheckSwordPierceEnemies(curPos, hitActors, caster);
+
+            yield return null;
+        }
+
+        Destroy(subGo);
+    }
+
+    /// <summary>
+    /// 【万剑归宗·绽放】F5 极·万钧合刃：双层金青同心超音速震波 + 巨型十字极光 + 镜头剧震
+    /// </summary>
+    public void PlayYinjianjueBloomF5Catch(Transform caster, bool flipX)
+    {
+        float dir = flipX ? -1f : 1f;
+        Vector3 handPos = caster.position + new Vector3(dir * 0.50f, 0.65f, 0f);
+
+        GameObject ring1 = new GameObject("VFX_Yinjianjue_CatchShockwave_Cyan");
+        ring1.transform.position = handPos;
+        ring1.transform.localScale = Vector3.one * 0.5f;
+        SpriteRenderer ringSr1 = ring1.AddComponent<SpriteRenderer>();
+        ringSr1.sprite = shockwaveSprite;
+        ringSr1.color = new Color(0.2f, 0.95f, 1f, 1f);
+        ringSr1.sortingOrder = 30;
+        StartCoroutine(ExpandAndFade(ring1, ringSr1, 0.30f, 3.4f));
+
+        GameObject ring2 = new GameObject("VFX_Yinjianjue_CatchShockwave_Gold");
+        ring2.transform.position = handPos;
+        ring2.transform.localScale = Vector3.one * 0.4f;
+        SpriteRenderer ringSr2 = ring2.AddComponent<SpriteRenderer>();
+        ringSr2.sprite = shockwaveSprite;
+        ringSr2.color = new Color(1f, 0.85f, 0.2f, 0.9f);
+        ringSr2.sortingOrder = 29;
+        StartCoroutine(ExpandAndFade(ring2, ringSr2, 0.38f, 4.5f));
+
+        GameObject star = new GameObject("VFX_Yinjianjue_BloomStarburst");
+        star.transform.position = handPos;
+        star.transform.localScale = Vector3.one * 3.2f;
+        SpriteRenderer starSr = star.AddComponent<SpriteRenderer>();
+        starSr.sprite = starburstSprite;
+        starSr.color = new Color(1f, 1f, 0.8f, 1f);
+        starSr.sortingOrder = 32;
+        StartCoroutine(FadeAndScale(star, starSr, 0.28f, 2.0f));
+
+        SpawnSlashSparks(handPos, 40, 2.5f, true);
+        TriggerCameraShake(0.45f, 0.20f);
+
+        CombatActor[] allActors = Object.FindObjectsOfType<CombatActor>();
+        if (allActors != null && allActors.Length > 0)
+        {
+            CombatActor casterActor = caster != null ? caster.GetComponent<CombatActor>() : null;
+            for (int i = 0; i < allActors.Length; i++)
+            {
+                CombatActor actor = allActors[i];
+                if (actor == null || actor.isPlayer) continue;
+
+                float dist = Vector2.Distance(handPos, actor.transform.position + new Vector3(0, 0.5f, 0));
+                if (dist < 3.2f)
+                {
+                    HitInfo h = new HitInfo
+                    {
+                        damage = 65f,
+                        poise = 40f,
+                        hitstun = 35,
+                        hitstop = 7,
+                        unblockable = true,
+                        attacker = casterActor,
+                        moveId = "QF-4E_TempestBurst"
+                    };
+                    actor.ApplyHit(h, casterActor);
+                    SpawnSwordStar(actor.transform.position + new Vector3(0, 0.5f, 0), 1.8f, 0.20f);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 【万剑归宗·绽放】F6 八荒扫尽：双重金青太虚残月剑气圆弧
+    /// </summary>
+    public void PlayYinjianjueBloomF6Flourish(Transform caster, bool flipX)
+    {
+        float dir = flipX ? -1f : 1f;
+        Vector3 center = caster.position + new Vector3(dir * 0.45f, 0.65f, 0f);
+
+        float angle = flipX ? 150f : 30f;
+        SpawnCrescentSlash(center, angle, new Vector2(3.4f, 2.4f), new Color(0.3f, 1f, 0.95f, 0.95f), 0.22f);
+        SpawnCrescentSlash(center, angle + 15f, new Vector2(4.2f, 3.0f), new Color(1f, 0.85f, 0.25f, 0.85f), 0.26f);
+
+        SpawnSwordStar(center + new Vector3(dir * 1.1f, 0.2f, 0f), 1.6f, 0.16f);
+        TriggerCameraShake(0.18f, 0.08f);
+    }
+
+
     private void SpawnCrescentSlash(Vector3 pos, float angleDeg, Vector2 scale, Color color, float life)
     {
         GameObject slash = new GameObject("VFX_CrescentSlash");
