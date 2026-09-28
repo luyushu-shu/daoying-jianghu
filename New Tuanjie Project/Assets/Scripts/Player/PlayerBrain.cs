@@ -39,9 +39,9 @@ public class PlayerBrain : Brain
         if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) mx -= 1f;
         if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) mx += 1f;
         actor.inp.moveX = mx;
-        actor.inp.blockHeld = Input.GetKey(KeyCode.F);
+        actor.inp.blockHeld = Input.GetKey(KeyCode.F) && !Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift);
         actor.inp.skill2Held = Input.GetKey(KeyCode.I);
-        actor.inp.skill5Held = Input.GetKey(KeyCode.G) || (Input.GetKey(KeyCode.LeftShift) && Input.GetKey(KeyCode.F));
+        actor.inp.skill5Held = Input.GetKey(KeyCode.G) || ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && Input.GetKey(KeyCode.F));
 
         // 缓冲的一次性意图
         for (int i = buffer.Count - 1; i >= 0; i--)
@@ -92,7 +92,7 @@ public class PlayerBrain : Brain
             if (Input.GetKeyDown(KeyCode.I)) Brain.Buffer("skill2");                               // 一剑霜寒
             if (Input.GetKeyDown(KeyCode.O) || Input.GetKeyDown(KeyCode.E)) Brain.Buffer("skill3"); // 回风舞
             if (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.R)) Brain.Buffer("skill4"); // 御剑飞来
-            if (Input.GetKeyDown(KeyCode.G)) Brain.Buffer("skill5");                               // 以剑御气
+            if (Input.GetKeyDown(KeyCode.G) || ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && Input.GetKeyDown(KeyCode.F))) Brain.Buffer("skill5"); // 以剑御气
             if (Input.GetKeyDown(KeyCode.T)) Brain.Buffer("skill6");                               // 万剑归宗 (终极奥义)
 
             // 跳跃：W 或 向上方向键

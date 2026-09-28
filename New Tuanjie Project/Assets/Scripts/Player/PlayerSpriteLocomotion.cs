@@ -65,6 +65,17 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     [SerializeField] public Sprite[] yinjianjueBloomSprites;
     [SerializeField] public Sprite[] yijianyuqiSprites;
     [SerializeField] public Sprite[] yijianyuqiBloomSprites;
+
+    // 以剑御气 · 苍龙玄天钟 / 万仞诛魔金刚剑界 (按住维持护盾，无时间衰减，全额吸收伤害)
+    public bool isYuqiShieldActive = false;
+    public bool isYuqiBloomShieldActive = false;
+    public float yuqiAbsorbedDamage = 0f;
+    public float yuqiBloomAbsorbedDamage = 0f;
+    public float maxYuqiShield = 100f;
+    public float maxYuqiBloomShield = 180f;
+    private bool isYuqiFromGui = false;
+    public bool IsYuqiGuarding => isYuqiShieldActive || isYuqiBloomShieldActive;
+
     string currentActionName = "待机 (Idle)";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -847,7 +858,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         }
 
         // 以剑御气技能 (G 或 Shift + F)
-        if (Input.GetKeyDown(KeyCode.G) || (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.F)))
+        if (Input.GetKeyDown(KeyCode.G) || ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && Input.GetKeyDown(KeyCode.F)))
         {
             TriggerYijianyuqi();
             return;
@@ -875,8 +886,8 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             return;
         }
 
-        // 格挡架势 (F)
-        if (Input.GetKeyDown(KeyCode.F) && isGrounded && dodgeTimer <= 0f && stunTimer <= 0f)
+        // 格挡架势 (F，未按住 Shift)
+        if (Input.GetKeyDown(KeyCode.F) && !Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift) && isGrounded && dodgeTimer <= 0f && stunTimer <= 0f)
         {
             PerformBlock();
             return;
@@ -1844,12 +1855,12 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         currentActionName = "待机 (Idle)";
     }
 
-    public void TriggerYijianyuqi()
+    public void TriggerYijianyuqi(bool fromGui = false)
     {
         if (isSkillPlaying) return;
         if (isBloomActive)
         {
-            TriggerYijianyuqiBloom();
+            TriggerYijianyuqiBloom(fromGui);
             return;
         }
 
@@ -1857,6 +1868,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         {
             LoadYijianyuqiSprites();
         }
+        isYuqiFromGui = fromGui;
         attackStep = 0;
         attackTimer = 0f;
         comboWindow = 0f;
@@ -1865,13 +1877,14 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         StartCoroutine(YijianyuqiRoutine());
     }
 
-    public void TriggerYijianyuqiBloom()
+    public void TriggerYijianyuqiBloom(bool fromGui = false)
     {
         if (isSkillPlaying) return;
         if (yijianyuqiBloomSprites == null || yijianyuqiBloomSprites.Length < 16 || yijianyuqiBloomSprites[0] == null)
         {
             LoadYijianyuqiBloomSprites();
         }
+        isYuqiFromGui = fromGui;
         swordIntent = 5;
         attackStep = 0;
         attackTimer = 0f;
@@ -1881,10 +1894,37 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         StartCoroutine(YijianyuqiBloomRoutine());
     }
 
+    public void AbsorbYuqiHit(float dmg, bool isBloom)
+    {
+        if (isBloom)
+        {
+            yuqiBloomAbsorbedDamage += dmg;
+            StartCoroutine(FlashYuqiColor(new Color(0.4f, 0.95f, 1f)));
+        }
+        else
+        {
+            yuqiAbsorbedDamage += dmg;
+            StartCoroutine(FlashYuqiColor(new Color(0.3f, 1f, 0.85f)));
+        }
+    }
+
+    IEnumerator FlashYuqiColor(Color flashCol)
+    {
+        if (spriteRenderer != null)
+        {
+            Color prev = spriteRenderer.color;
+            spriteRenderer.color = flashCol;
+            yield return new WaitForSecondsRealtime(0.06f);
+            if (spriteRenderer != null) spriteRenderer.color = prev;
+        }
+    }
+
     IEnumerator YijianyuqiRoutine()
     {
         isSkillPlaying = true;
-        currentActionName = "【剑技】以剑御气 · 苍龙玄天钟 (Kinetic Aegis)";
+        isYuqiShieldActive = false;
+        yuqiAbsorbedDamage = 0f;
+        currentActionName = "【剑技】以剑御气 · 苍龙玄天钟 (起势构盾)";
 
         if (yijianyuqiSprites == null || yijianyuqiSprites.Length < 16 || yijianyuqiSprites[0] == null)
         {
@@ -1896,29 +1936,102 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
         if (yijianyuqiSprites != null && yijianyuqiSprites.Length >= 16 && yijianyuqiSprites[0] != null)
         {
-            float[] frameDurations = new float[] {
-                0.06f, 0.06f, 0.06f, 0.06f,
-                0.07f, 0.07f, 0.07f, 0.07f,
-                0.10f, 0.07f, 0.08f, 0.09f,
-                0.07f, 0.09f, 0.08f, 0.12f
-            };
-
-            for (int i = 0; i < 16; i++)
+            // 阶段一：构盾前摇 (F1 ~ F4，以剑引气，双龙合钟)
+            float[] startupDurations = new float[] { 0.06f, 0.06f, 0.06f, 0.06f };
+            for (int i = 0; i < 4; i++)
             {
                 if (spriteRenderer != null) spriteRenderer.sprite = yijianyuqiSprites[i];
+                yield return new WaitForSeconds(startupDurations[i]);
+            }
 
-                if (i == 8)
+            // 阶段二：琉璃玄钟护盾固守 (F5 ~ F7 维持阶段)
+            // 设定：按住不松时一直维持护盾，不随时间衰减，吸收所有伤害，超限或松手完成剩下动作
+            isYuqiShieldActive = true;
+            int[] holdFrames = new int[] { 4, 5, 6 }; // F5, F6, F7
+            int holdIdx = 0;
+            float frameTimer = 0f;
+            const float holdFrameDuration = 0.14f; // 护盾晶格与苍龙游弋呼吸循环
+            bool shieldOverloaded = false;
+
+            while (true)
+            {
+                // 检测按键是否持续按住 (G 键 或 Shift + F，或 GUI 保持)
+                bool isKeyHeld = Input.GetKey(KeyCode.G) ||
+                                 ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && Input.GetKey(KeyCode.F)) ||
+                                 isYuqiFromGui;
+
+                // 松开按键：退出护盾维持，完成剩下动作
+                if (!isKeyHeld)
                 {
-                    Time.timeScale = 0.2f;
-                    yield return new WaitForSecondsRealtime(0.08f);
-                    Time.timeScale = 1.0f;
-                }
-                else if (i == 9)
-                {
-                    currentActionName = "【苍龙逆震】暴烈推刃！";
+                    shieldOverloaded = false;
+                    break;
                 }
 
-                yield return new WaitForSeconds(frameDurations[i]);
+                // 受到伤害超出范围 (达到或超过上限 maxYuqiShield 100点)：聚能临界爆裂，完成剩下动作
+                if (yuqiAbsorbedDamage >= maxYuqiShield)
+                {
+                    shieldOverloaded = true;
+                    break;
+                }
+
+                // 允许按 H 键模拟受击吸收伤害 (每次吸收 25 点)
+                if (Input.GetKeyDown(KeyCode.H))
+                {
+                    AbsorbYuqiHit(25f, false);
+                }
+
+                // 呼吸循环动画渲染
+                frameTimer += Time.deltaTime;
+                if (frameTimer >= holdFrameDuration)
+                {
+                    frameTimer = 0f;
+                    holdIdx = (holdIdx + 1) % holdFrames.Length;
+                    if (spriteRenderer != null) spriteRenderer.sprite = yijianyuqiSprites[holdFrames[holdIdx]];
+                }
+
+                currentActionName = $"【以剑御气·苍龙玄天钟】护盾固守 (吸收: {Mathf.RoundToInt(yuqiAbsorbedDamage)}/{Mathf.RoundToInt(maxYuqiShield)} | 效能: 100% 无衰减 | H 模拟受击)";
+
+                yield return null;
+            }
+
+            isYuqiShieldActive = false;
+            isYuqiFromGui = false;
+
+            // 阶段三：承击逆震与完成剩下动作 (F8 ~ F16)
+            if (shieldOverloaded)
+            {
+                currentActionName = "【玄钟聚能临界爆裂！】苍龙破壁大反震！";
+            }
+            else
+            {
+                currentActionName = "【松手收势逆震】暴烈推刃！苍龙破壁！";
+            }
+
+            // F8 (index 7: 触界星爆 / 临界迸发)
+            if (spriteRenderer != null) spriteRenderer.sprite = yijianyuqiSprites[7];
+            yield return new WaitForSeconds(0.08f);
+
+            // F9 (index 8: 墨痕裂钟 - 强烈停顿顿帧)
+            if (spriteRenderer != null) spriteRenderer.sprite = yijianyuqiSprites[8];
+            Time.timeScale = 0.2f;
+            yield return new WaitForSecondsRealtime(0.08f);
+            Time.timeScale = 1.0f;
+
+            // F10 ~ F16 (index 9 ~ 15) 完成剩下反震推刃、漫天碎晶与收剑归鞘动作
+            float[] finishDurations = new float[] {
+                0.07f, // F10 暴烈推刃
+                0.08f, // F11 龙吟破壁
+                0.09f, // F12 漫天碎晶
+                0.07f, // F13 星尘飞瀑
+                0.09f, // F14 狂草残月 360度剑花
+                0.08f, // F15 龙吟振雪
+                0.12f  // F16 敛息入道
+            };
+
+            for (int i = 9; i < 16; i++)
+            {
+                if (spriteRenderer != null) spriteRenderer.sprite = yijianyuqiSprites[i];
+                yield return new WaitForSeconds(finishDurations[i - 9]);
             }
         }
         else
@@ -1941,7 +2054,9 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     IEnumerator YijianyuqiBloomRoutine()
     {
         isSkillPlaying = true;
-        currentActionName = "【剑意绽放】极·以剑御气 · 万仞诛魔金刚剑界";
+        isYuqiBloomShieldActive = false;
+        yuqiBloomAbsorbedDamage = 0f;
+        currentActionName = "【剑意绽放】极·以剑御气 · 万仞诛魔金刚剑界 (起势构界)";
         swordIntent = 0;
 
         if (yijianyuqiBloomSprites == null || yijianyuqiBloomSprites.Length < 16 || yijianyuqiBloomSprites[0] == null)
@@ -1954,30 +2069,97 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
         if (yijianyuqiBloomSprites != null && yijianyuqiBloomSprites.Length >= 16 && yijianyuqiBloomSprites[0] != null)
         {
-            float[] frameDurations = new float[] {
-                0.06f, 0.06f, 0.06f, 0.06f,
-                0.07f, 0.07f, 0.07f, 0.07f,
-                0.12f, 0.07f, 0.08f, 0.10f,
-                0.07f, 0.09f, 0.08f, 0.12f
-            };
-
-            for (int i = 0; i < 16; i++)
+            // 阶段一：金刚剑界起势 (F1 ~ F4，星斗太极，神霄天雷，八剑起势)
+            float[] startupDurations = new float[] { 0.06f, 0.06f, 0.06f, 0.06f };
+            for (int i = 0; i < 4; i++)
             {
                 if (spriteRenderer != null) spriteRenderer.sprite = yijianyuqiBloomSprites[i];
+                yield return new WaitForSeconds(startupDurations[i]);
+            }
 
-                if (i == 8)
+            // 阶段二：万仞剑界金刚护体 (F5 ~ F7 维持阶段)
+            // 8柄神圣青金飞剑公转，万仞刺林光轮；按住维持，无时间衰减，吸收所有伤害
+            isYuqiBloomShieldActive = true;
+            int[] holdFrames = new int[] { 4, 5, 6 }; // F5, F6, F7
+            int holdIdx = 0;
+            float frameTimer = 0f;
+            const float holdFrameDuration = 0.12f;
+            bool shieldOverloaded = false;
+
+            while (true)
+            {
+                bool isKeyHeld = Input.GetKey(KeyCode.G) ||
+                                 ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && Input.GetKey(KeyCode.F)) ||
+                                 isYuqiFromGui;
+
+                if (!isKeyHeld)
                 {
-                    currentActionName = "【时空凝滞】临界极核！";
-                    Time.timeScale = 0.1f;
-                    yield return new WaitForSecondsRealtime(0.12f);
-                    Time.timeScale = 1.0f;
-                }
-                else if (i == 9)
-                {
-                    currentActionName = "【万仞碎空】超新星大核爆！";
+                    shieldOverloaded = false;
+                    break;
                 }
 
-                yield return new WaitForSeconds(frameDurations[i]);
+                if (yuqiBloomAbsorbedDamage >= maxYuqiBloomShield)
+                {
+                    shieldOverloaded = true;
+                    break;
+                }
+
+                if (Input.GetKeyDown(KeyCode.H))
+                {
+                    AbsorbYuqiHit(30f, true);
+                }
+
+                frameTimer += Time.deltaTime;
+                if (frameTimer >= holdFrameDuration)
+                {
+                    frameTimer = 0f;
+                    holdIdx = (holdIdx + 1) % holdFrames.Length;
+                    if (spriteRenderer != null) spriteRenderer.sprite = yijianyuqiBloomSprites[holdFrames[holdIdx]];
+                }
+
+                currentActionName = $"【极·以剑御气·万仞诛魔剑界】金刚剑界护体 (吸收: {Mathf.RoundToInt(yuqiBloomAbsorbedDamage)}/{Mathf.RoundToInt(maxYuqiBloomShield)} | 效能: 100% 无衰减 | H 模拟受击)";
+
+                yield return null;
+            }
+
+            isYuqiBloomShieldActive = false;
+            isYuqiFromGui = false;
+
+            // 阶段三：万仞碎空与完成剩下动作 (F8 ~ F16)
+            if (shieldOverloaded)
+            {
+                currentActionName = "【剑界聚能临界爆裂！】万仞碎空超新星！";
+            }
+            else
+            {
+                currentActionName = "【万仞诛魔 · 极空推刃！】超新星大核爆！";
+            }
+
+            // F8 (index 7: 虚空裂隙触界星爆)
+            if (spriteRenderer != null) spriteRenderer.sprite = yijianyuqiBloomSprites[7];
+            yield return new WaitForSeconds(0.08f);
+
+            // F9 (index 8: 时空凝滞临界极核 - 极致时停)
+            if (spriteRenderer != null) spriteRenderer.sprite = yijianyuqiBloomSprites[8];
+            Time.timeScale = 0.1f;
+            yield return new WaitForSecondsRealtime(0.12f);
+            Time.timeScale = 1.0f;
+
+            // F10 ~ F16 (index 9 ~ 15) 完成剩下动作
+            float[] finishDurations = new float[] {
+                0.07f, // F10 万仞碎空超新星大核爆
+                0.08f, // F11 拔地 2 米冰魄玄峰神峰群
+                0.10f, // F12 银河碎晶倒泻
+                0.07f, // F13 双层太虚残月剑幕
+                0.09f, // F14 神剑龙吟
+                0.08f, // F15 天人合道
+                0.12f  // F16 敛息归鞘
+            };
+
+            for (int i = 9; i < 16; i++)
+            {
+                if (spriteRenderer != null) spriteRenderer.sprite = yijianyuqiBloomSprites[i];
+                yield return new WaitForSeconds(finishDurations[i - 9]);
             }
         }
         else
@@ -2103,21 +2285,39 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.Space(6);
-        GUILayout.Label("<b>--- 技能5：以剑御气 · 苍龙玄天钟 / 万仞诛魔剑界 (16帧全向反震 G / Shift+F) ---</b>");
+        GUILayout.Label("<b>--- 技能5：以剑御气 · 苍龙玄天钟 / 万仞诛魔剑界 (长按维持护盾 G / Shift+F) ---</b>");
         GUILayout.BeginHorizontal();
-        GUI.color = new Color(0.2f, 0.9f, 1f);
-        if (GUILayout.Button("常态以剑御气 (16帧苍龙玄钟)", GUILayout.Height(30)))
+        if (isYuqiShieldActive || isYuqiBloomShieldActive)
         {
-            if (yijianyuqiSprites == null || yijianyuqiSprites.Length < 16 || yijianyuqiSprites[0] == null)
+            GUI.color = new Color(1f, 0.45f, 0.45f);
+            if (GUILayout.Button("松开护盾 (完成剩下动作/反震)", GUILayout.Height(30)))
             {
-                LoadYijianyuqiSprites();
+                isYuqiFromGui = false;
             }
-            StartCoroutine(YijianyuqiRoutine());
+            GUI.color = new Color(0.35f, 1f, 0.85f);
+            float currentAbsorbed = isYuqiBloomShieldActive ? yuqiBloomAbsorbedDamage : yuqiAbsorbedDamage;
+            float currentMax = isYuqiBloomShieldActive ? maxYuqiBloomShield : maxYuqiShield;
+            if (GUILayout.Button($"模拟吸收受击 (+25) [{Mathf.RoundToInt(currentAbsorbed)}/{Mathf.RoundToInt(currentMax)}]", GUILayout.Height(30)))
+            {
+                AbsorbYuqiHit(25f, isYuqiBloomShieldActive);
+            }
         }
-        GUI.color = new Color(1f, 0.75f, 0.2f);
-        if (GUILayout.Button("★ 极·以剑御气 (16帧万仞诛魔剑界)", GUILayout.Height(30)))
+        else
         {
-            TriggerYijianyuqiBloom();
+            GUI.color = new Color(0.2f, 0.9f, 1f);
+            if (GUILayout.Button("常态以剑御气 (按住维持护盾)", GUILayout.Height(30)))
+            {
+                if (yijianyuqiSprites == null || yijianyuqiSprites.Length < 16 || yijianyuqiSprites[0] == null)
+                {
+                    LoadYijianyuqiSprites();
+                }
+                TriggerYijianyuqi(true);
+            }
+            GUI.color = new Color(1f, 0.75f, 0.2f);
+            if (GUILayout.Button("★ 极·以剑御气 (按住维持金刚剑界)", GUILayout.Height(30)))
+            {
+                TriggerYijianyuqiBloom(true);
+            }
         }
         GUI.color = Color.white;
         GUILayout.EndHorizontal();
@@ -2148,8 +2348,8 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.Space(6);
-        GUILayout.Label("<color=#cccccc><size=11>按键提示：长按 F 维持格挡（维持越久效能越弱，受击负荷达 100 弹刀僵直）\n" +
-                        "按 G/H 模拟受击 | 按 T 完美弹反 | Space 闪避 | J 轻击三连 | K 重刺 | Q/U 破空刺 | E/O 回风舞 | I 霜寒 | R/P 引剑</size></color>");
+        GUILayout.Label("<color=#cccccc><size=11>按键提示：长按 F 维持格挡（随时间衰减）；长按 G 或 Shift+F 维持以剑御气（无时间衰减，全额吸收伤害，松手或超限释放反震）\n" +
+                        "按 H 模拟受击 | 按 T 完美弹反 | Space 闪避 | J 轻击三连 | K 重刺 | Q/U 破空刺 | E/O 回风舞 | I 霜寒 | R/P 引剑</size></color>");
         GUILayout.EndArea();
     }
 }

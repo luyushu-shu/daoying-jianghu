@@ -262,6 +262,14 @@ public class CombatActor : MonoBehaviour
         if (dead) return;
         if (Invulnerable) return;
 
+        // 以剑御气·苍龙玄天钟 / 极·万仞诛魔金刚剑界 全向护盾吸收判定 (吸收所有伤害，无衰减)
+        YuqiState ys = state as YuqiState;
+        if (ys != null)
+        {
+            ys.ResolveHit(h, attacker);
+            return;
+        }
+
         // 格挡/弹反判定
         BlockState bs = state as BlockState;
         if (bs != null && !h.unblockable)

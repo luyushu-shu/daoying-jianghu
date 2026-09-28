@@ -586,6 +586,166 @@ public class BlockState : ActorState
     }
 }
 
+/// <summary>以剑御气·苍龙玄天钟 / 极·万仞诛魔金刚剑界：按住不松持续维持护盾，无时间衰减，期间全额吸收所有伤害；松开按键或伤害超限立即完成剩下反震与收招动作。</summary>
+public class YuqiState : ActorState
+{
+    public float AbsorbedDamage { get; private set; } = 0f;
+    public float MaxShield { get; private set; } = 100f;
+    public bool IsBloom { get; private set; } = false;
+    private int startupFrames = 14;
+    private bool shieldOverloaded = false;
+
+    public YuqiState(CombatActor a) : base(a, "Yuqi")
+    {
+        if (a.isPlayer && a.bloomArmed)
+        {
+            IsBloom = true;
+            MaxShield = 180f;
+            a.bloomArmed = false;
+        }
+        else
+        {
+            MaxShield = 100f;
+        }
+    }
+
+    public override void Enter()
+    {
+        base.Enter();
+        actor.TriggerAnim("Block");
+        if (actor.playerAnim != null) actor.playerAnim.SetBool("IsBlocking", true);
+
+        CombatDirector.Msg(IsBloom ? "【极·以剑御气 · 万仞剑界】" : "【以剑御气 · 苍龙玄天钟】", actor.body.pos + new Vector2(0, 2.1f), new Color(0.35f, 0.95f, 1f), 45);
+        CombatDirector.Shake(0.15f, 6);
+    }
+
+    public override void Exit()
+    {
+        base.Exit();
+        if (actor.playerAnim != null) actor.playerAnim.SetBool("IsBlocking", false);
+    }
+
+    public override void Tick()
+    {
+        base.Tick();
+        actor.body.vel.x = 0f;
+
+        // 构盾前摇完成后，进入按键保持判定
+        if (Frame >= startupFrames)
+        {
+            // 按住不松时持续维持护盾；不会随时间衰减
+            // 松开按键 或 吸收伤害超出范围 -> 立即完成剩下动作 (反震冲击波与收招)
+            bool isHeld = actor.inp.skill5Held;
+            if (!isHeld || AbsorbedDamage >= MaxShield)
+            {
+                shieldOverloaded = (AbsorbedDamage >= MaxShield);
+                actor.ChangeState(new YuqiBurstState(actor, AbsorbedDamage, IsBloom, shieldOverloaded));
+            }
+        }
+    }
+
+    /// <summary>全向吸收受到的所有伤害，自身零掉血零掉架势；累计吸收伤害并在超限时爆盾逆震。</summary>
+    public void ResolveHit(HitInfo h, CombatActor attacker)
+    {
+        AbsorbedDamage += h.damage;
+
+        actor.freezeFrames = Mathf.Max(actor.freezeFrames, 3);
+        if (attacker != null) attacker.freezeFrames = Mathf.Max(attacker.freezeFrames, 3);
+
+        CombatDirector.Msg($"玄钟吸收! ({Mathf.RoundToInt(AbsorbedDamage)}/{Mathf.RoundToInt(MaxShield)})", actor.body.pos + new Vector2(0, 1.8f), new Color(0.4f, 1f, 0.85f), 30);
+        CombatDirector.Shake(0.12f, 5);
+        actor.Flash(new Color(0.3f, 0.9f, 1f));
+
+        if (AbsorbedDamage >= MaxShield)
+        {
+            shieldOverloaded = true;
+            actor.ChangeState(new YuqiBurstState(actor, AbsorbedDamage, IsBloom, true));
+        }
+    }
+}
+
+/// <summary>以剑御气完成剩下动作：暴烈推刃、苍龙破壁大反震冲击波、漫天碎晶与收剑归鞘。</summary>
+public class YuqiBurstState : ActorState
+{
+    private float absorbedDamage;
+    private bool isBloom;
+    private bool overloaded;
+    private bool hitLanded = false;
+    private int totalBurstFrames = 36;
+
+    public YuqiBurstState(CombatActor a, float absorbed, bool bloom, bool isOverloaded) : base(a, "YuqiBurst")
+    {
+        absorbedDamage = absorbed;
+        isBloom = bloom;
+        overloaded = isOverloaded;
+    }
+
+    public override void Enter()
+    {
+        base.Enter();
+        actor.TriggerAnim("HeavyThrust");
+
+        string title = overloaded
+            ? (isBloom ? "【万仞碎空 · 超新星核爆!】" : "【玄钟聚能临界爆裂！】苍龙破壁！")
+            : (isBloom ? "【万仞诛魔 · 极空推刃!】" : "【苍龙逆震】暴烈推刃！");
+
+        CombatDirector.Msg(title, actor.body.pos + new Vector2(0, 2.2f), new Color(1f, 0.9f, 0.3f), 50);
+        CombatDirector.Shake(overloaded ? 0.32f : 0.22f, 12);
+        CombatDirector.SlowMo(0.4f, 8);
+    }
+
+    public override void Tick()
+    {
+        base.Tick();
+        actor.body.vel.x = 0f;
+
+        // 在爆发第 4 帧释放全向反震冲击波判定
+        if (Frame >= 4 && !hitLanded)
+        {
+            hitLanded = true;
+            DoBurstHit();
+        }
+
+        if (Frame >= totalBurstFrames)
+        {
+            if (actor.body.grounded) actor.ChangeState(new GroundedState(actor));
+            else actor.ChangeState(new AirborneState(actor, false));
+        }
+    }
+
+    void DoBurstHit()
+    {
+        float blastRadius = isBloom ? 4.2f : 2.6f;
+        float baseDmg = isBloom ? 5.5f : 2.8f;
+        float finalDmg = (baseDmg + absorbedDamage * 0.4f) * CombatDirector.DamageUnit;
+        float poiseDmg = isBloom ? 50f : 35f;
+
+        List<CombatActor> all = CombatDirector.Actors;
+        for (int i = 0; i < all.Count; i++)
+        {
+            CombatActor t = all[i];
+            if (t == actor || t.isPlayer == actor.isPlayer || t.dead) continue;
+
+            float dist = Vector2.Distance(actor.body.pos, t.body.pos);
+            if (dist <= blastRadius)
+            {
+                HitInfo h = new HitInfo
+                {
+                    damage = finalDmg,
+                    poise = poiseDmg,
+                    hitstun = isBloom ? 30 : 22,
+                    hitstop = isBloom ? 6 : 4,
+                    unblockable = isBloom,
+                    attackerFacing = actor.facing,
+                    dir = new Vector2(Mathf.Sign(t.body.pos.x - actor.body.pos.x), 0.2f).normalized
+                };
+                t.ApplyHit(h, actor);
+                t.body.vel.x = Mathf.Sign(t.body.pos.x - actor.body.pos.x) * (isBloom ? 6f : 3.5f);
+            }
+        }
+    }
+}
+
 /// <summary>受击硬直。knockdown=true 为破防长硬直。</summary>
 public class HitstunState : ActorState
 {
@@ -711,6 +871,14 @@ public static class PlayerChains
         if (a.chi < mv.chi)
         {
             CombatDirector.Msg("内力不足", a.body.pos + new Vector2(0, 1.9f), new Color(0.5f, 0.7f, 1f), 30);
+            return;
+        }
+
+        // 以剑御气 (QF-5)：切换为专属全向持续护盾状态 YuqiState (按住维持，不衰减，吸收全额伤害)
+        if (id == "QF-5")
+        {
+            a.chi -= mv.chi;
+            a.ChangeState(new YuqiState(a));
             return;
         }
 
