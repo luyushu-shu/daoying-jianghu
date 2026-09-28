@@ -736,8 +736,8 @@ public class YuqiBurstState : ActorState
                     hitstun = isBloom ? 30 : 22,
                     hitstop = isBloom ? 6 : 4,
                     unblockable = isBloom,
-                    attackerFacing = actor.facing,
-                    dir = new Vector2(Mathf.Sign(t.body.pos.x - actor.body.pos.x), 0.2f).normalized
+                    attacker = actor,
+                    moveId = isBloom ? "QF-5E" : "QF-5"
                 };
                 t.ApplyHit(h, actor);
                 t.body.vel.x = Mathf.Sign(t.body.pos.x - actor.body.pos.x) * (isBloom ? 6f : 3.5f);

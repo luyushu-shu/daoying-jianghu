@@ -372,7 +372,7 @@ public class CombatActor : MonoBehaviour
 
     // ---------------- 表现 ----------------
 
-    void Flash(Color c)
+    public void Flash(Color c)
     {
         if (bodySr != null) bodySr.color = Color.Lerp(baseColor, c, 0.7f);
         if (playerSr != null)
