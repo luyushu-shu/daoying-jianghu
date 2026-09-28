@@ -73,23 +73,23 @@
 flowchart TD
     subgraph DEFENSE ["三段式格挡防御与收招体系 (Three-Tier Defense System)"]
         direction TB
-        START["按 F 键起手<br/>(0.25s 初始稳态)"] --> HOLD["按住 F 键保持<br/><b>BlockGuard</b> (guard-1~4)<br/>• 效能由 100% 衰减至 30%<br/>• 负荷由 0 累加至 100"]
+        START["按 F 键起手 (0.25s 初始稳态)"] --> HOLD["按住 F 键保持 BlockGuard<br/>• 效能由 100% 衰减至 30%<br/>• 负荷由 0 累加至 100"]
         
-        HOLD -->|松开 F 键<br/>IsBlocking = false| EXIT["松手收招卸劲<br/><b>BlockExit</b> (guard-5~7)<br/>(0.24s 翻腕敛剑)"]
+        HOLD -->|"松开 F 键"| EXIT["松手收招卸劲 BlockExit (0.24s 翻腕敛剑)"]
         
-        EXIT -->|自然播毕 0.24s| IDLE["待机状态<br/><b>Idle</b>"]
-        EXIT -.->|Space 闪避取消| DODGE["翻滚闪避<br/><b>Dodge</b>"]
-        EXIT -.->|J / K 攻击取消| ATK["轻击 / 重刺<br/><b>Attack / Heavy</b>"]
-        EXIT -.->|A / D 移动取消| MOVE["行走 / 疾奔<br/><b>Walk / Run</b>"]
-        EXIT -.->|再次按 F 键| HOLD
+        EXIT -->|"自然播毕 0.24s"| IDLE["待机状态 Idle"]
+        EXIT -.->|"Space 闪避取消"| DODGE["翻滚闪避 Dodge"]
+        EXIT -.->|"J 或 K 攻击取消"| ATK["轻击或重刺 Attack / Heavy"]
+        EXIT -.->|"A 或 D 移动取消"| MOVE["行走或疾奔 Walk / Run"]
+        EXIT -.->|"再次按 F 键"| HOLD
         
-        HOLD -->|前 0.18s 弹反窗受击| PARRY["完美弹反成功<br/><b>ParrySuccess</b><br/>• 100% 伤害免疫<br/>• 暴烈星芒 + 墨浪四溅<br/>• 敌招强断 + 陷入 28f 破绽"]
-        HOLD -->|普通格挡受击| HIT["格挡受击微震<br/><b>BlockHit</b><br/>• 减免 70% 伤害<br/>• 刃口泛青白微光<br/>• 承载架势负荷"]
-        HIT -->|继续按住 F| HOLD
+        HOLD -->|"前 0.18s 弹反窗受击"| PARRY["完美弹反成功 ParrySuccess<br/>• 100% 伤害免疫<br/>• 暴烈星芒与墨浪四溅<br/>• 敌招强断并陷入 28f 破绽"]
+        HOLD -->|"普通格挡受击"| HIT["格挡受击微震 BlockHit<br/>• 减免 70% 伤害<br/>• 刃口泛青白微光<br/>• 承载架势负荷"]
+        HIT -->|"继续按住 F"| HOLD
         
-        HOLD -->|受到攻击负荷 ≥ 100| BREAK["弹刀破防溃败<br/><b>GuardBreak</b><br/>• 姿态被强行崩解震退<br/>• 陷入 1.25s (75f) 绝对大僵直<br/>• 全操作封锁，受创暴击"]
-        BREAK -->|1.25s 僵直结束| IDLE
-        PARRY -->|0.51s 播毕 / 允许反击| IDLE
+        HOLD -->|"受到攻击负荷达到 100"| BREAK["弹刀破防溃败 GuardBreak<br/>• 姿态被强行崩解震退<br/>• 陷入 1.25s 绝对大僵直<br/>• 全操作封锁，受创暴击"]
+        BREAK -->|"1.25s 僵直结束"| IDLE
+        PARRY -->|"0.51s 播毕或允许反击"| IDLE
     end
 ```
 
@@ -109,30 +109,47 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph LOCOMOTION ["基础身法与机动 (Locomotion)"]
-        IDLE["待机<br/><b>Idle</b>"] <-->|A / D 移动| WALK["行走<br/><b>Walk</b> (15f)"]
-        WALK <-->|Shift 疾奔| RUN["疾奔<br/><b>Run</b> (9f)"]
-        IDLE <-->|Shift 疾奔| RUN
-        IDLE & WALK & RUN -->|Space| DODGE["翻滚闪避<br/><b>Dodge</b> (8f)<br/>[3~12f 无敌帧]"]
-        IDLE & WALK & RUN -->|W 键| JUMP["轻功跳跃<br/><b>Jump</b> (8f)"]
-        DODGE -->|播毕 / 移动| IDLE
-        JUMP -->|接触地面| IDLE
+        IDLE["待机 (Idle)"] <-->|"A 或 D 移动"| WALK["行走 Walk (15f)"]
+        WALK <-->|"Shift 疾奔"| RUN["疾奔 Run (9f)"]
+        IDLE <-->|"Shift 疾奔"| RUN
+        IDLE -->|"Space 键"| DODGE["翻滚闪避 Dodge (8f 无敌帧)"]
+        WALK -->|"Space 键"| DODGE
+        RUN -->|"Space 键"| DODGE
+        IDLE -->|"W 键"| JUMP["轻功跳跃 Jump (8f)"]
+        WALK -->|"W 键"| JUMP
+        RUN -->|"W 键"| JUMP
+        DODGE -->|"播毕或移动"| IDLE
+        JUMP -->|"接触地面"| IDLE
     end
 
     subgraph OFFENSE ["进攻与连招派生 (Offense Chains)"]
-        IDLE & WALK & RUN -->|J 键| ATK1["轻击一段·平斩<br/><b>Attack 1</b> (4f)"]
-        ATK1 -->|J 预输入| ATK2["轻击二段·上挑<br/><b>Attack 2</b> (4f)"]
-        ATK2 -->|J 预输入| ATK3["轻击三段·力劈<br/><b>Attack 3</b> (4f)"]
+        IDLE -->|"J 键"| ATK1["轻击一段·平斩 Attack 1 (4f)"]
+        WALK -->|"J 键"| ATK1
+        RUN -->|"J 键"| ATK1
+        ATK1 -->|"J 键预输入"| ATK2["轻击二段·上挑 Attack 2 (4f)"]
+        ATK2 -->|"J 键预输入"| ATK3["轻击三段·力劈 Attack 3 (4f)"]
         
-        ATK1 & ATK2 -->|K 键衍生| HEAVY["蓄力重刺·贯穿<br/><b>HeavyThrust</b> (8f)<br/>[霸体蓄力 / 必破盾削架势]"]
-        IDLE & WALK & RUN -->|K 键| HEAVY
+        ATK1 -->|"K 键衍生"| HEAVY["蓄力重刺·贯穿 HeavyThrust (8f 霸体破盾)"]
+        ATK2 -->|"K 键衍生"| HEAVY
+        IDLE -->|"K 键"| HEAVY
+        WALK -->|"K 键"| HEAVY
+        RUN -->|"K 键"| HEAVY
         
-        ATK1 & ATK2 & ATK3 & HEAVY -.->|Space 取消| DODGE
-        ATK1 & ATK2 & ATK3 & HEAVY -.->|F 键取消| BLOCK["格挡防守<br/><b>BlockGuard</b>"]
+        ATK1 -.->|"Space 取消"| DODGE
+        ATK2 -.->|"Space 取消"| DODGE
+        ATK3 -.->|"Space 取消"| DODGE
+        HEAVY -.->|"Space 取消"| DODGE
+        ATK1 -.->|"F 键取消"| BLOCK["格挡防守 BlockGuard"]
+        ATK2 -.->|"F 键取消"| BLOCK
+        ATK3 -.->|"F 键取消"| BLOCK
+        HEAVY -.->|"F 键取消"| BLOCK
     end
 
     subgraph DEFENSE_LINK ["防守流转 (Defense)"]
-        IDLE & WALK & RUN -->|F 键| BLOCK
-        BLOCK -.->|松开 F 键| EXIT_NODE["收招卸劲<br/><b>BlockExit</b>"]
+        IDLE -->|"F 键"| BLOCK
+        WALK -->|"F 键"| BLOCK
+        RUN -->|"F 键"| BLOCK
+        BLOCK -.->|"松开 F 键"| EXIT_NODE["收招卸劲 BlockExit"]
         EXIT_NODE --> IDLE
     end
 ```
@@ -420,7 +437,7 @@ flowchart TD
 flowchart LR
     subgraph INTENT ["剑意积累体系 (Sword Intent System)"]
         direction TB
-        B1["平砍命中 (+1 剑意)"] --> BAR["5 阶剑意槽<br/><b>Sword Intent Bar</b><br/>[ 1 ➔ 2 ➔ 3 ➔ 4 ➔ 5 ]"]
+        B1["平砍命中 (+1 剑意)"] --> BAR["5 阶剑意槽 (Sword Intent Bar)<br/>1 至 5 阶蓄积"]
         B2["精准弹反 (+2 剑意)"] --> BAR
         B3["化解敌招 (+1 剑意)"] --> BAR
     end
@@ -428,23 +445,23 @@ flowchart LR
     subgraph SKILLS ["青锋五大绝技进化树 (Skill Evolution Tree)"]
         direction TB
         
-        BAR -->|< 5 阶释放<br/>(常规消耗)| NORM["常态技能群 (Normal Skills)"]
-        BAR -->|满 5 阶释放<br/>(消耗全槽)| BLOOM["剑意绽放强化版 (Bloom Skills)"]
+        BAR -->|"低于 5 阶释放 (常规消耗)"| NORM["常态技能群 (Normal Skills)"]
+        BAR -->|"满 5 阶释放 (全槽绽放)"| BLOOM["剑意绽放强化版 (Bloom Skills)"]
         
-        NORM --> S1["<b>破空刺 (QF-1)</b> [Q/U]<br/>• 错身瞬移敌后 +1.3m<br/>• 绕盾背刺 + 延时墨爆"]
-        BLOOM --> S1E["<b>极·破空刺 (QF-1E)</b><br/>• 4.5m 裂空巨锥 + 6f 时停<br/>• 三度断空墨爆 + 冰霜结界"]
+        NORM --> S1["破空刺 QF-1 (Q或U)<br/>• 错身瞬移敌后 +1.3m<br/>• 绕盾背刺与延时墨爆"]
+        BLOOM --> S1E["极·破空刺 QF-1E<br/>• 4.5m 裂空巨锥与 6f 时停<br/>• 三度断空墨爆与冰霜结界"]
         
-        NORM --> S2["<b>回风舞 (QF-2)</b> [E/O]<br/>• 360° 狂草双月斩<br/>• 微风牵引解围 2.6x 伤害"]
-        BLOOM --> S2E["<b>极·回风舞 (QF-2E)</b><br/>• 青鸾风暴法相冲霄<br/>• 极强黑洞聚怪 + 5段高速绞杀"]
+        NORM --> S2["回风舞 QF-2 (E或O)<br/>• 360 度狂草双月斩<br/>• 微风牵引解围 2.6x 伤害"]
+        BLOOM --> S2E["极·回风舞 QF-2E<br/>• 青鸾风暴法相冲霄<br/>• 极强黑洞聚怪与 5 段绞杀"]
         
-        NORM --> S3["<b>一剑霜寒 (QF-3)</b> [I]<br/>• 2.6m 直线破防霜线<br/>• 必破重盾 + 留存减速冰雾"]
-        BLOOM --> S3E["<b>极·一剑霜寒 (QF-3E)</b><br/>• 3.8m+ 冰魄玄峰拔地 2 米<br/>• 绝对霜冻 1.5s + 万晶爆破 8.0x"]
+        NORM --> S3["一剑霜寒 QF-3 (I 键)<br/>• 2.6m 直线破防霜线<br/>• 必破重盾与留存减速冰雾"]
+        BLOOM --> S3E["极·一剑霜寒 QF-3E<br/>• 3.8m 冰魄玄峰拔地 2 米<br/>• 绝对霜冻 1.5s 与万晶爆破"]
         
-        NORM --> S4["<b>引剑诀 (QF-4)</b> [R/P]<br/>• 35m/s 飞剑横贯全屏穿透<br/>• 握柄水墨冲击波 + 残月剑花"]
-        BLOOM --> S4E["<b>极·万剑归宗 (QF-4E)</b><br/>• 混元聚灵 + 6柄飞剑弧线轰击<br/>• 4.5m 同心震波 + 双重残月剑幕"]
+        NORM --> S4["引剑诀 QF-4 (R或P)<br/>• 35m 每秒飞剑横贯穿透<br/>• 握柄水墨冲击波与残月剑花"]
+        BLOOM --> S4E["极·万剑归宗 QF-4E<br/>• 混元聚灵与 6 柄飞剑轰击<br/>• 4.5m 同心震波与双重剑幕"]
         
-        NORM --> S5["<b>以剑御气 (QF-5)</b> [Shift+F]<br/>• 2.4m 琉璃苍龙玄天钟<br/>• 反弹飞行道具 + 反震推敌 2.2m"]
-        BLOOM --> S5E["<b>极·万仞诛魔 (QF-5E)</b><br/>• 8柄金青神剑公转切割光轮<br/>• 超新星核爆 + 4.8x + 冰峰群拔地"]
+        NORM --> S5["以剑御气 QF-5 (Shift+F)<br/>• 2.4m 琉璃苍龙玄天钟<br/>• 反弹飞行道具与反震推敌"]
+        BLOOM --> S5E["极·万仞诛魔 QF-5E<br/>• 8 柄金青神剑切割光轮<br/>• 超新星核爆与冰峰拔地"]
     end
 ```
 
@@ -474,28 +491,28 @@ flowchart LR
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Patrol_Walk: 初始生成 / 沿固定路线巡逻
+    [*] --> Patrol_Walk: 初始生成或沿固定路线巡逻
     
-    Patrol_Walk --> Alert_Idle: 侦测到玩家进入警戒范围 (距离 ≤ 4.5m)
-    Alert_Idle --> Patrol_Walk: 玩家脱离追击范围 (距离 > 6.0m)
+    Patrol_Walk --> Alert_Idle: 侦测到玩家进入警戒范围 (距离 4.5m 内)
+    Alert_Idle --> Patrol_Walk: 玩家脱离追击范围 (距离大于 6.0m)
     
-    Alert_Idle --> Chase_Move: 确认目标，提刀逼近 (2.0m < 距离 ≤ 4.5m)
-    Chase_Move --> Alert_Idle: 处于中距离对峙试探 (距离 ≈ 2.0m)
+    Alert_Idle --> Chase_Move: 确认目标提刀逼近 (距离在 2.0m 至 4.5m)
+    Chase_Move --> Alert_Idle: 处于中距离对峙试探 (距离约 2.0m)
     
-    Chase_Move --> AttackA_Slash: 进入近战出刀攻击范围 (距离 ≤ 1.4m)
+    Chase_Move --> AttackA_Slash: 进入近战出刀攻击范围 (距离 1.4m 内)
     AttackA_Slash --> AttackA_Recovery: 4 帧蓄力前挥挥砍
     AttackA_Recovery --> Alert_Idle: 挥击后摇结束，重回对峙
     
     Patrol_Walk --> Hitstun: 受到攻击判定
     Alert_Idle --> Hitstun: 受到攻击判定
     Chase_Move --> Hitstun: 受到攻击判定
-    AttackA_Slash --> Interrupt_Stagger: 被精准弹反 / 重刺破招
+    AttackA_Slash --> Interrupt_Stagger: 被精准弹反或重刺破招
     
     Hitstun --> Alert_Idle: 受击受挫恢复 (硬直结束)
     Interrupt_Stagger --> Alert_Idle: 破招硬直恢复 (28f 惩罚结束)
     
-    Hitstun --> Death: 生命值归零 (HP ≤ 0)
-    Interrupt_Stagger --> Death: 处决收割 (HP ≤ 0)
+    Hitstun --> Death: 生命值归零 (HP 耗尽)
+    Interrupt_Stagger --> Death: 处决收割 (HP 耗尽)
     
     Death --> [*]: 溶解消散
 ```
@@ -594,19 +611,19 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     subgraph CLASH ["攻防接触判定 (Hit Detection & Interaction)"]
-        ATK_IN["攻击方招式发起<br/>(伤害值 + 架势冲击力)"] --> CLASH_CHECK{"受击方当前状态?"}
+        ATK_IN["攻击方招式发起 (伤害值与架势冲击力)"] --> CLASH_CHECK{"受击方当前状态"}
         
-        CLASH_CHECK -->|处于普通状态 / 前摇中| HIT_BODY["<b>直接肉身命中</b><br/>• 扣除 100% 满额 HP<br/>• 承受完整受击硬直 (Hitstun 12~24f)<br/>• 角色后退卸力位移"]
+        CLASH_CHECK -->|"处于普通状态或出招前摇"| HIT_BODY["直接肉身命中<br/>• 扣除 100% 满额 HP<br/>• 承受完整受击硬直 12 至 24 帧<br/>• 角色后退卸力位移"]
         
-        CLASH_CHECK -->|闪避有效帧内 (3~12f)| DODGE_EVADE["<b>闪避无敌规避</b><br/>• 0 伤害，穿身而过<br/>• 触发水墨残影与地面擦地碎屑"]
+        CLASH_CHECK -->|"处于闪避有效帧内"| DODGE_EVADE["闪避无敌规避<br/>• 0 伤害，穿身而过<br/>• 触发水墨残影与擦地碎屑"]
         
-        CLASH_CHECK -->|按下 F 键且在 0.18s 内| PARRY_WIN["<b>精准弹反 (Perfect Parry)</b><br/>• 100% 免疫伤害<br/>• 全场 8f 强烈顿帧 (Hitstop) + 镜头震颤<br/>• 攻击方招式强制中断并陷入 28f 破绽<br/>• 防守方 +2 剑意，开启反击追杀窗"]
+        CLASH_CHECK -->|"按 F 键在 0.18s 弹反窗内"| PARRY_WIN["精准弹反 Perfect Parry<br/>• 100% 免疫伤害<br/>• 全场 8 帧强烈顿帧与震颤<br/>• 攻击方招式强断并陷入 28 帧破绽<br/>• 防守方 +2 剑意，开启反击窗"]
         
-        CLASH_CHECK -->|持续持刀防守 (BlockGuard)| BLOCK_CALC["<b>格挡吸收判定</b><br/>• 减免 70% 伤害 (随维持时间漏伤 12%~50%)<br/>• 刃口泛青白微光<br/>• 承受架势负荷 = 基础 / 效能 (最高 3.3x)"]
+        CLASH_CHECK -->|"持续按住 F 键防守 BlockGuard"| BLOCK_CALC["格挡吸收判定<br/>• 减免 70% 伤害 (随维持衰减)<br/>• 刃口泛青白微光<br/>• 累加架势负荷"]
         
-        BLOCK_CALC --> POISE_CHECK{"架势负荷是否 ≥ 100?"}
-        POISE_CHECK -->|否 (架势尚存)| BLOCK_HOLD["<b>守势维持</b><br/>吸收冲击，持续保持架刀稳态"]
-        POISE_CHECK -->|是 (负荷爆满)| GUARD_BREAK["<b>【弹刀破防！】</b><br/>• 强制击碎防御姿态，后退震退<br/>• 触发 1.25 秒 (75f) 全操作封锁大僵直<br/>• 角色虚弱闪烁，任由敌方处决追击"]
+        BLOCK_CALC --> POISE_CHECK{"架势负荷是否达到 100"}
+        POISE_CHECK -->|"否 (架势尚存)"| BLOCK_HOLD["守势维持<br/>吸收冲击，持续保持架刀稳态"]
+        POISE_CHECK -->|"是 (负荷爆满)"| GUARD_BREAK["弹刀破防 GuardBreak<br/>• 强制击碎防御姿态并震退<br/>• 触发 1.25 秒全操作封锁大僵直<br/>• 角色虚弱闪烁，任由处决"]
     end
 ```
 
