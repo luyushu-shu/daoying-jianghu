@@ -28,7 +28,9 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     float dodgeDir = 1f;
     float blockTimer = 0f;
     bool isBlockingHeld = false;
+    bool isBlockingFromGui = false;
     float blockHoldDuration = 0f;
+    float blockRecoveryTimer = 0f; // 松开按键后的收招动作计时 (0.24s，播放 guard-5 -> guard-6 -> guard-7)
     float guardStrain = 0f;       // 架势负荷 (0~100，爆满强制弹刀破防)
     float blockEfficiency = 1.0f; // 格挡效能 (1.0 -> 0.30 维持时间越久越弱)
     float stunTimer = 0f;         // 破防僵直计时器
@@ -36,6 +38,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     public bool IsBlocking => isBlockingHeld || blockTimer > 0f;
     public bool IsParryWindow => IsBlocking && blockHoldDuration <= ParryWindow;
     public bool IsStunned => stunTimer > 0f;
+    public bool IsBlockExiting => blockRecoveryTimer > 0f;
     public float BlockEfficiency => blockEfficiency;
     public float GuardStrain => guardStrain;
     public float StunTimer => stunTimer;
@@ -656,8 +659,8 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         // 格挡架势持续更新与衰减
         if (isBlockingHeld || blockTimer > 0f)
         {
-            // 维持按住按键：格挡持续不退
-            if (Input.GetKey(KeyCode.F))
+            // 维持按住按键：格挡持续不退；松开按键则立即开始收招卸劲
+            if (Input.GetKey(KeyCode.F) || isBlockingFromGui)
             {
                 isBlockingHeld = true;
                 blockHoldDuration += Time.deltaTime;
@@ -724,19 +727,8 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             }
             else
             {
-                // 松开 F 键：平稳收招退出格挡
-                if (blockTimer > 0f)
-                {
-                    blockTimer -= Time.deltaTime;
-                    if (blockTimer <= 0f)
-                    {
-                        ExitBlock();
-                    }
-                }
-                else
-                {
-                    ExitBlock();
-                }
+                // 松开 F 键：立即退出架势并播放后续收招卸劲动作 (guard-5 -> guard-6 -> guard-7 -> Idle)
+                ExitBlock();
             }
         }
         else
@@ -745,6 +737,19 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             if (guardStrain > 0f)
             {
                 guardStrain = Mathf.Max(0f, guardStrain - Time.deltaTime * 40f);
+            }
+
+            // 松手后的收招卸劲归正倒计时 (0.24s 内顺畅播放完收招动作后回归待机)
+            if (blockRecoveryTimer > 0f)
+            {
+                blockRecoveryTimer -= Time.deltaTime;
+                if (blockRecoveryTimer <= 0f)
+                {
+                    if (isGrounded && attackTimer <= 0f && !IsBlocking && dodgeTimer <= 0f && stunTimer <= 0f)
+                    {
+                        currentActionName = "待机 (Idle)";
+                    }
+                }
             }
         }
 
@@ -852,6 +857,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         bool jumpInput = Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow) || (Input.GetKey(KeyCode.W) && Input.GetKeyDown(KeyCode.Space));
         if (jumpInput && isGrounded && dodgeTimer <= 0f)
         {
+            blockRecoveryTimer = 0f;
             isGrounded = false;
             velY = JumpVelocity;
             currentActionName = "跳跃 (Jump)";
@@ -926,10 +932,11 @@ public class PlayerSpriteLocomotion : MonoBehaviour
                 moveSpeed = QingfengWalkStride.DesignMoveSpeed;
                 currentActionName = "行走 (Walk)";
             }
+            blockRecoveryTimer = 0f;
         }
         else
         {
-            if (isGrounded && attackTimer <= 0f && !IsBlocking && dodgeTimer <= 0f && stunTimer <= 0f)
+            if (isGrounded && attackTimer <= 0f && !IsBlocking && dodgeTimer <= 0f && stunTimer <= 0f && blockRecoveryTimer <= 0f)
                 currentActionName = "待机 (Idle)";
         }
 
@@ -949,6 +956,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     {
         if (stunTimer > 0f) return;
         ExitBlock();
+        blockRecoveryTimer = 0f;
         dodgeDir = spriteRenderer != null && spriteRenderer.flipX ? -1f : 1f;
         if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) dodgeDir = -1f;
         if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) dodgeDir = 1f;
@@ -963,6 +971,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     {
         if (stunTimer > 0f) return;
         ExitBlock();
+        blockRecoveryTimer = 0f;
         if (attackStep == 0 || comboWindow <= 0f)
         {
             attackStep = 1;
@@ -999,6 +1008,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     {
         if (stunTimer > 0f) return;
         ExitBlock();
+        blockRecoveryTimer = 0f;
         attackStep = 4;
         attackTimer = 0.76f;
         comboWindow = 0f;
@@ -1008,17 +1018,19 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         if (animator != null) animator.SetTrigger("HeavyThrust");
     }
 
-    public void PerformBlock()
+    public void PerformBlock(bool fromGui = false)
     {
         if (stunTimer > 0f) return;
         attackStep = 0;
         attackTimer = 0f;
         comboWindow = 0f;
         lungeTimer = 0f;
+        blockRecoveryTimer = 0f;
         isBlockingHeld = true;
+        isBlockingFromGui = fromGui;
         blockHoldDuration = 0f;
         blockEfficiency = 1.0f;
-        blockTimer = BlockDuration;
+        blockTimer = 0f;
         currentActionName = "格挡姿态 (Block Guard)";
         if (animator != null)
         {
@@ -1029,7 +1041,13 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
     public void ExitBlock()
     {
+        if (isBlockingHeld || blockTimer > 0f)
+        {
+            blockRecoveryTimer = 0.24f; // 卸劲归正收招动画时长 (0.24s 播放 guard-5 -> guard-6 -> guard-7 -> Idle)
+            currentActionName = "收招卸劲 (Block Exit)";
+        }
         isBlockingHeld = false;
+        isBlockingFromGui = false;
         blockTimer = 0f;
         blockHoldDuration = 0f;
         blockEfficiency = 1.0f;
@@ -1076,8 +1094,10 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     public void TriggerGuardBreak()
     {
         isBlockingHeld = false;
+        isBlockingFromGui = false;
         blockTimer = 0f;
         blockHoldDuration = 0f;
+        blockRecoveryTimer = 0f;
         guardStrain = 100f;
         stunTimer = GuardBreakStunDuration; // 1.25秒破防僵直
         currentActionName = "【弹刀破防！】架势崩解僵直！";
@@ -2117,7 +2137,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         if (GUILayout.Button(IsBlocking ? "松开格挡(F)" : "格挡保持(F)"))
         {
             if (IsBlocking) ExitBlock();
-            else PerformBlock();
+            else PerformBlock(true);
         }
         if (GUILayout.Button("模拟受击(G/H)")) TriggerBlockHit();
         if (GUILayout.Button("完美弹反(T)")) TriggerParrySuccess();

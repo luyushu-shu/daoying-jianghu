@@ -158,6 +158,9 @@ AnimatorStateMachine:
     m_State: {{fileID: 110200012}}
     m_Position: {{x: 200, y: 180, z: 0}}
   - serializedVersion: 1
+    m_State: {{fileID: 110200013}}
+    m_Position: {{x: 0, y: 190, z: 0}}
+  - serializedVersion: 1
     m_State: {{fileID: 110200020}}
     m_Position: {{x: 200, y: 300, z: 0}}
   - serializedVersion: 1
@@ -239,6 +242,7 @@ AnimatorTransition:
         (110200010, 'BlockGuard', '4e63f100e07b63749b8556043082d827', 1, [110100017, 110100018, 110100019]),
         (110200011, 'BlockHit', 'b685dd28e62cf9d4f99d22b1bc6c87b5', 1, [110100021]),
         (110200012, 'ParrySuccess', '324726b05408ee047b585320212ffafb', 1, [110100022]),
+        (110200013, 'BlockExit', 'd8a6b2c86e08216fcb377f0fec296f8c', 1, [110100020, 110100034, 110100035]),
         # Mook
         (110200020, 'Mook_Idle', '61aed9a79fa24fff85023e4ede092067', 1, [110100030]),
         (110200021, 'Mook_Walk', 'd9383dbd37944c768e8fb8ddfaee7c30', 1, [110100031]),
@@ -338,11 +342,14 @@ AnimatorStateTransition:
     docs.append(make_transition(110100016, 110200001, [], exit_time=1, exit_val=0.90, duration=0.1))
 
     # Block
-    docs.append(make_transition(110100017, 110200001, [(2, 'IsBlocking', 0)], exit_time=0, duration=0.1))
+    docs.append(make_transition(110100017, 110200013, [(2, 'IsBlocking', 0)], exit_time=0, duration=0.05))
     docs.append(make_transition(110100018, 110200011, [(1, 'BlockHit', 0)], exit_time=0, duration=0.05))
     docs.append(make_transition(110100019, 110200012, [(1, 'ParrySuccess', 0)], exit_time=0, duration=0.05))
+    docs.append(make_transition(110100020, 110200001, [], exit_time=1, exit_val=0.88, duration=0.05))
     docs.append(make_transition(110100021, 110200010, [], exit_time=1, exit_val=0.85, duration=0.1))
     docs.append(make_transition(110100022, 110200001, [], exit_time=1, exit_val=0.85, duration=0.1))
+    docs.append(make_transition(110100034, 110200002, [(3, 'Speed', 0.1), (4, 'Speed', 0.6)], exit_time=0, duration=0.05))
+    docs.append(make_transition(110100035, 110200003, [(3, 'Speed', 0.6)], exit_time=0, duration=0.05))
 
     # AnyState Qingfeng
     docs.append(make_transition(110100023, 110200004, [(6, 'Character', 0), (1, 'Jump', 0)], exit_time=0, duration=0.05, can_self=0))
