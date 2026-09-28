@@ -43,6 +43,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     // 破空刺/回风舞/一剑霜寒 技能帧与状态
     bool isSkillPlaying = false;
     [SerializeField] public Sprite[] pokongciSprites;
+    [SerializeField] public Sprite[] pokongciBloomSprites;
     [SerializeField] public Sprite[] huifengwuSprites;
     [SerializeField] public Sprite[] huifengwuBloomSprites;
     [SerializeField] public Sprite[] yijianshuanghanSprites;
@@ -68,6 +69,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         combat = GetComponent<CombatActor>();
         groundY = transform.position.y;
         LoadPokongciSprites();
+        LoadPokongciBloomSprites();
         LoadHuifengwuSprites();
         LoadHuifengwuBloomSprites();
         LoadYijianshuanghanSprites();
@@ -172,21 +174,102 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         }
     }
 
-    void LoadPokongciSprites()
+    public void LoadPokongciSprites()
     {
 #if UNITY_EDITOR
         List<Sprite> list = new List<Sprite>();
-        for (int i = 1; i <= 7; i++)
+        for (int i = 1; i <= 8; i++)
         {
             string p = $"Assets/Sprites/Player/Skills/Pokongci/pokongci-{i}.png";
             Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
             if (sp != null) list.Add(sp);
         }
-        if (list.Count > 0)
+        if (list.Count >= 8)
         {
             pokongciSprites = list.ToArray();
+            return;
         }
 #endif
+        LoadPokongciSpritesFromDisk();
+    }
+
+    void LoadPokongciSpritesFromDisk()
+    {
+        string dir = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Pokongci");
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string filePath = System.IO.Path.Combine(dir, $"pokongci-{i}.png");
+            if (System.IO.File.Exists(filePath))
+            {
+                byte[] bytes = System.IO.File.ReadAllBytes(filePath);
+                Texture2D tex = new Texture2D(680, 480, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Bilinear;
+                if (tex.LoadImage(bytes))
+                {
+                    Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.09f), 214f);
+                    list.Add(sp);
+                }
+            }
+        }
+        if (list.Count >= 8)
+        {
+            pokongciSprites = list.ToArray();
+            Debug.Log($"[PlayerSpriteLocomotion] Successfully loaded {pokongciSprites.Length} Pokongci sprites directly from disk!");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 8 Pokongci sprites from disk (loaded {list.Count}) at {dir}");
+        }
+    }
+
+    public void LoadPokongciBloomSprites()
+    {
+#if UNITY_EDITOR
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string p = $"Assets/Sprites/Player/Skills/Pokongci_Bloom/pokongci-bloom-{i}.png";
+            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+            if (sp != null) list.Add(sp);
+        }
+        if (list.Count >= 8)
+        {
+            pokongciBloomSprites = list.ToArray();
+            return;
+        }
+#endif
+        LoadPokongciBloomSpritesFromDisk();
+    }
+
+    void LoadPokongciBloomSpritesFromDisk()
+    {
+        string dir = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Pokongci_Bloom");
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 8; i++)
+        {
+            string filePath = System.IO.Path.Combine(dir, $"pokongci-bloom-{i}.png");
+            if (System.IO.File.Exists(filePath))
+            {
+                byte[] bytes = System.IO.File.ReadAllBytes(filePath);
+                Texture2D tex = new Texture2D(680, 480, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Bilinear;
+                if (tex.LoadImage(bytes))
+                {
+                    Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.09f), 214f);
+                    list.Add(sp);
+                }
+            }
+        }
+        if (list.Count >= 8)
+        {
+            pokongciBloomSprites = list.ToArray();
+            Debug.Log($"[PlayerSpriteLocomotion] Successfully loaded {pokongciBloomSprites.Length} Pokongci Bloom sprites directly from disk!");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 8 Pokongci Bloom sprites from disk (loaded {list.Count}) at {dir}");
+        }
     }
 
     public void LoadHuifengwuSprites()
@@ -683,6 +766,11 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
     IEnumerator PokongciRoutine()
     {
+        if (pokongciSprites == null || pokongciSprites.Length < 8 || pokongciSprites[0] == null)
+        {
+            LoadPokongciSprites();
+        }
+
         isSkillPlaying = true;
         currentActionName = "【剑技】破空刺 · 错身瞬透 (Piercing Void Thrust)";
 
@@ -694,15 +782,15 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         // 启动常态破空刺专属特效（细青白激光线 + 2重残影 + 敌后延时裂体墨爆）
         PokongciBloomFX.Instance.PlayNormalPokongciFX(transform, spriteRenderer != null && spriteRenderer.flipX, startP, targetEndP, activeSp);
 
-        if (pokongciSprites != null && pokongciSprites.Length >= 7)
+        if (pokongciSprites != null && pokongciSprites.Length >= 8)
         {
             if (animator != null) animator.enabled = false;
 
-            // 极速起手(5f) -> 电光穿透(3f, +1.3m穿透敌后) -> 敌后单膝刹车(4f) -> 抽剑旋腕(5f)
-            float[] frameDurations = new float[] { 0.04f, 0.04f, 0.04f, 0.05f, 0.06f, 0.07f, 0.06f };
-            float[] frameLunges = new float[] { 0f, 0.25f, 0.70f, 0.35f, 0.0f, 0.0f, 0.0f }; // 总位移 1.3m，直接穿透至敌后
+            // 极速起手(5f) -> 离弦飞身(5f, +0.35m) -> 电光贯体(5f, +0.65m) -> 敌后单膝刹车(6f, +0.30m) -> 延时墨爆(8f) -> 旋剑抽意(7f) -> 拂袖导刃(7f) -> 敛息归渊(9f)
+            float[] frameDurations = new float[] { 0.05f, 0.05f, 0.05f, 0.06f, 0.08f, 0.07f, 0.07f, 0.09f };
+            float[] frameLunges = new float[] { 0f, 0.35f, 0.65f, 0.30f, 0.0f, 0.0f, 0.0f, 0.0f }; // 总位移 1.3m，直接穿透至敌后
 
-            for (int i = 0; i < 7; i++)
+            for (int i = 0; i < 8; i++)
             {
                 if (spriteRenderer != null) spriteRenderer.sprite = pokongciSprites[i];
                 float duration = frameDurations[i];
@@ -735,6 +823,11 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
     IEnumerator PokongciBloomRoutine()
     {
+        if (pokongciBloomSprites == null || pokongciBloomSprites.Length < 8 || pokongciBloomSprites[0] == null)
+        {
+            LoadPokongciBloomSprites();
+        }
+
         isSkillPlaying = true;
         currentActionName = "【剑意绽放】极·破空刺 (Void Thrust · Bloom)";
         swordIntent = 0; // 消耗 5 阶剑意
@@ -747,21 +840,29 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         // 启动电影级全套特效（四灵飞剑+天崩巨锥+时空停滞+三度墨爆+空间裂隙+冰霜霜痕+残影）
         PokongciBloomFX.Instance.PlayBloomEffect(transform, spriteRenderer != null && spriteRenderer.flipX, startP, targetEndP, activeSp);
 
-        if (pokongciSprites != null && pokongciSprites.Length >= 7)
+        if (pokongciBloomSprites != null && pokongciBloomSprites.Length >= 8)
         {
             if (animator != null) animator.enabled = false;
 
             // 刚体聚势闪烁 (青金刚体光辉)
             if (spriteRenderer != null) spriteRenderer.color = new Color(0.6f, 1f, 1f, 1f);
 
-            // 强化版位移翻倍至 1.8m，穿透一切敌人
-            float[] frameDurations = new float[] { 0.06f, 0.05f, 0.05f, 0.08f, 0.06f, 0.08f, 0.06f };
-            float[] frameLunges = new float[] { 0f, 0.4f, 0.9f, 0.5f, 0.0f, 0.0f, 0.0f }; // 总位移 1.8m
+            // 强化版位移翻倍至 1.8m，穿透一切敌人 (8帧序列)
+            // F1: 极·起势·龙吟聚风 (0.06s, lunge 0.0m)
+            // F2: 极·离弦·金芒破空 (0.05s, lunge 0.50m)
+            // F3: 极·贯体·错身碎空 (0.05s, lunge 0.85m)
+            // F4: 极·止步·金刚逆滑 (0.07s, lunge 0.45m -> 总位移 1.80m) + 时空凝滞/慢放
+            // F5: 极·裂体·暗渊沉爆 (0.08s)
+            // F6: 极·回锋·金墨断脉 (0.08s) -> 三度连环墨爆闪烁
+            // F7: 极·霜界·玄冰冻空 (0.08s)
+            // F8: 极·纳鞘·万象定乾坤 (0.10s)
+            float[] frameDurations = new float[] { 0.06f, 0.05f, 0.05f, 0.07f, 0.08f, 0.08f, 0.08f, 0.10f };
+            float[] frameLunges = new float[] { 0f, 0.50f, 0.85f, 0.45f, 0.0f, 0.0f, 0.0f, 0.0f }; // 总位移 1.8m
 
             // P1~P3 聚势与离弦
             for (int i = 0; i < 3; i++)
             {
-                if (spriteRenderer != null) spriteRenderer.sprite = pokongciSprites[i];
+                if (spriteRenderer != null) spriteRenderer.sprite = pokongciBloomSprites[i];
                 float duration = frameDurations[i];
                 float lunge = frameLunges[i];
                 float elapsed = 0f;
@@ -779,10 +880,10 @@ public class PlayerSpriteLocomotion : MonoBehaviour
                 }
             }
 
-            // P4 瞬身穿透 + 6f 时空静止 (Chrono Pause)
+            // P4 瞬身穿透 + 止步跪滑 + 6f 时空静止 (Chrono Pause)
             if (spriteRenderer != null)
             {
-                spriteRenderer.sprite = pokongciSprites[3];
+                spriteRenderer.sprite = pokongciBloomSprites[3];
                 spriteRenderer.color = Color.white;
             }
             float lungeP4 = frameLunges[3];
@@ -803,12 +904,13 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             yield return new WaitForSecondsRealtime(0.10f);
             Time.timeScale = 1.0f;
 
-            // P5 裂痕蓄爆与共振
-            if (spriteRenderer != null) spriteRenderer.sprite = pokongciSprites[4];
-            yield return new WaitForSeconds(0.06f);
+            // P5 裂痕蓄爆与共振 (暗渊沉爆)
+            if (spriteRenderer != null) spriteRenderer.sprite = pokongciBloomSprites[4];
+            yield return new WaitForSeconds(frameDurations[4]);
 
             // P6 三度连环墨爆 (三次闪烁与音画震颤)
             currentActionName = "【剑痕引爆】三度断空墨爆！";
+            if (spriteRenderer != null) spriteRenderer.sprite = pokongciBloomSprites[5];
             for (int blast = 1; blast <= 3; blast++)
             {
                 if (spriteRenderer != null) spriteRenderer.color = new Color(0.3f, 0.9f, 1f);
@@ -817,11 +919,13 @@ public class PlayerSpriteLocomotion : MonoBehaviour
                 yield return new WaitForSeconds(0.03f);
             }
 
-            // P7 散尘纳鞘与冰霜余韵
-            if (spriteRenderer != null) spriteRenderer.sprite = pokongciSprites[5];
-            yield return new WaitForSeconds(frameDurations[5]);
-            if (spriteRenderer != null) spriteRenderer.sprite = pokongciSprites[6];
+            // P7 霜界玄冰冻空
+            if (spriteRenderer != null) spriteRenderer.sprite = pokongciBloomSprites[6];
             yield return new WaitForSeconds(frameDurations[6]);
+
+            // P8 纳鞘定乾坤与散尘入鞘
+            if (spriteRenderer != null) spriteRenderer.sprite = pokongciBloomSprites[7];
+            yield return new WaitForSeconds(frameDurations[7]);
 
             if (animator != null) animator.enabled = true;
         }
