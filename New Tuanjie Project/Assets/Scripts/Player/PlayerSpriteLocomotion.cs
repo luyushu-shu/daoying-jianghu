@@ -65,6 +65,12 @@ public class PlayerSpriteLocomotion : MonoBehaviour
     [SerializeField] public Sprite[] yinjianjueBloomSprites;
     [SerializeField] public Sprite[] yijianyuqiSprites;
     [SerializeField] public Sprite[] yijianyuqiBloomSprites;
+    [SerializeField] public Sprite[] wanjianSprites;
+    [SerializeField] public Sprite[] wanjianBloomSprites;
+    [SerializeField] public Sprite swordProjectileNormalSprite;
+    [SerializeField] public Sprite swordProjectileBloomSprite;
+    [SerializeField] public Sprite fallingSwordNormal45Sprite;
+    [SerializeField] public Sprite fallingSwordBloom45Sprite;
 
     // 以剑御气 · 苍龙玄天钟 / 万仞诛魔金刚剑界 (按住维持护盾，无时间衰减，全额吸收伤害)
     public bool isYuqiShieldActive = false;
@@ -106,6 +112,9 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         LoadYinjianjueBloomSprites();
         LoadYijianyuqiSprites();
         LoadYijianyuqiBloomSprites();
+        LoadWanjianSprites();
+        LoadWanjianBloomSprites();
+        LoadWanjianProjectiles();
     }
 
     public void LoadYijianshuanghanSprites()
@@ -399,6 +408,139 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         else
         {
             Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 16 Yijianyuqi Bloom sprites from disk (loaded {list.Count}) at {dir}");
+        }
+    }
+
+    public void LoadWanjianSprites()
+    {
+#if UNITY_EDITOR
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 16; i++)
+        {
+            string p = $"Assets/Sprites/Player/Skills/Wanjian/wanjian-{i}.png";
+            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+            if (sp != null) list.Add(sp);
+        }
+        if (list.Count >= 16)
+        {
+            wanjianSprites = list.ToArray();
+            return;
+        }
+#endif
+        LoadWanjianSpritesFromDisk();
+    }
+
+    void LoadWanjianSpritesFromDisk()
+    {
+        string dir = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Wanjian");
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 16; i++)
+        {
+            string filePath = System.IO.Path.Combine(dir, $"wanjian-{i}.png");
+            if (System.IO.File.Exists(filePath))
+            {
+                byte[] bytes = System.IO.File.ReadAllBytes(filePath);
+                Texture2D tex = new Texture2D(680, 480, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Bilinear;
+                if (tex.LoadImage(bytes))
+                {
+                    Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.09f), 214f);
+                    list.Add(sp);
+                }
+            }
+        }
+        if (list.Count >= 16)
+        {
+            wanjianSprites = list.ToArray();
+            Debug.Log($"[PlayerSpriteLocomotion] Successfully loaded {wanjianSprites.Length} Wanjian sprites directly from disk!");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 16 Wanjian sprites from disk (loaded {list.Count}) at {dir}");
+        }
+    }
+
+    public void LoadWanjianBloomSprites()
+    {
+#if UNITY_EDITOR
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 16; i++)
+        {
+            string p = $"Assets/Sprites/Player/Skills/Wanjian_Bloom/wanjian-bloom-{i}.png";
+            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+            if (sp != null) list.Add(sp);
+        }
+        if (list.Count >= 16)
+        {
+            wanjianBloomSprites = list.ToArray();
+            return;
+        }
+#endif
+        LoadWanjianBloomSpritesFromDisk();
+    }
+
+    void LoadWanjianBloomSpritesFromDisk()
+    {
+        string dir = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Wanjian_Bloom");
+        List<Sprite> list = new List<Sprite>();
+        for (int i = 1; i <= 16; i++)
+        {
+            string filePath = System.IO.Path.Combine(dir, $"wanjian-bloom-{i}.png");
+            if (System.IO.File.Exists(filePath))
+            {
+                byte[] bytes = System.IO.File.ReadAllBytes(filePath);
+                Texture2D tex = new Texture2D(680, 480, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Bilinear;
+                if (tex.LoadImage(bytes))
+                {
+                    Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.09f), 214f);
+                    list.Add(sp);
+                }
+            }
+        }
+        if (list.Count >= 16)
+        {
+            wanjianBloomSprites = list.ToArray();
+            Debug.Log($"[PlayerSpriteLocomotion] Successfully loaded {wanjianBloomSprites.Length} Wanjian Bloom sprites directly from disk!");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerSpriteLocomotion] Failed to load 16 Wanjian Bloom sprites from disk (loaded {list.Count}) at {dir}");
+        }
+    }
+
+    public void LoadWanjianProjectiles()
+    {
+#if UNITY_EDITOR
+        swordProjectileNormalSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Sprites/Player/Skills/Wanjian/sword_projectile_normal_clean.png");
+        fallingSwordNormal45Sprite = swordProjectileNormalSprite;
+        swordProjectileBloomSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Sprites/Player/Skills/Wanjian_Bloom/sword_projectile_bloom_clean.png");
+        fallingSwordBloom45Sprite = swordProjectileBloomSprite;
+        if (fallingSwordNormal45Sprite != null && fallingSwordBloom45Sprite != null) return;
+#endif
+        string dirWanjian = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Wanjian");
+        string pNorm = System.IO.Path.Combine(dirWanjian, "sword_projectile_normal_clean.png");
+        if (System.IO.File.Exists(pNorm))
+        {
+            byte[] b = System.IO.File.ReadAllBytes(pNorm);
+            Texture2D t = new Texture2D(2, 2);
+            if (t.LoadImage(b))
+            {
+                fallingSwordNormal45Sprite = Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0.5f, 0.5f), 214f);
+                swordProjectileNormalSprite = fallingSwordNormal45Sprite;
+            }
+        }
+        string dirBloom = System.IO.Path.Combine(Application.dataPath, "Sprites/Player/Skills/Wanjian_Bloom");
+        string pBloom = System.IO.Path.Combine(dirBloom, "sword_projectile_bloom_clean.png");
+        if (System.IO.File.Exists(pBloom))
+        {
+            byte[] b = System.IO.File.ReadAllBytes(pBloom);
+            Texture2D t = new Texture2D(2, 2);
+            if (t.LoadImage(b))
+            {
+                fallingSwordBloom45Sprite = Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0.5f, 0.5f), 214f);
+                swordProjectileBloomSprite = fallingSwordBloom45Sprite;
+            }
         }
     }
 
@@ -861,6 +1003,18 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.G) || ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && Input.GetKeyDown(KeyCode.F)))
         {
             TriggerYijianyuqi();
+            return;
+        }
+
+        // 万剑归宗终极技能 (Y: 常态/随剑意, V: 强制极·万剑归宗)
+        if (Input.GetKeyDown(KeyCode.V))
+        {
+            TriggerWanjianBloom();
+            return;
+        }
+        if (Input.GetKeyDown(KeyCode.Y))
+        {
+            TriggerWanjian();
             return;
         }
 
@@ -2179,12 +2333,393 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         currentActionName = "待机 (Idle)";
     }
 
+    public void TriggerWanjian()
+    {
+        if (isSkillPlaying) return;
+        if (swordIntent >= 5)
+        {
+            TriggerWanjianBloom();
+            return;
+        }
+        if (wanjianSprites == null || wanjianSprites.Length < 16 || wanjianSprites[0] == null)
+        {
+            LoadWanjianSprites();
+        }
+        attackStep = 0;
+        attackTimer = 0f;
+        comboWindow = 0f;
+        dodgeTimer = 0f;
+        StartCoroutine(WanjianRoutine());
+    }
+
+    public void TriggerWanjianBloom()
+    {
+        if (isSkillPlaying) return;
+        if (wanjianBloomSprites == null || wanjianBloomSprites.Length < 16 || wanjianBloomSprites[0] == null)
+        {
+            LoadWanjianBloomSprites();
+        }
+        attackStep = 0;
+        attackTimer = 0f;
+        comboWindow = 0f;
+        dodgeTimer = 0f;
+        swordIntent = 5;
+        StartCoroutine(WanjianBloomRoutine());
+    }
+
+    IEnumerator WanjianRoutine()
+    {
+        isSkillPlaying = true;
+        currentActionName = "【终极奥义】万剑归宗 · 剑雨倾天 (QF-6)";
+
+        if (wanjianSprites == null || wanjianSprites.Length < 16 || wanjianSprites[0] == null)
+        {
+            LoadWanjianSprites();
+        }
+        if (fallingSwordNormal45Sprite == null) LoadWanjianProjectiles();
+
+        if (animator != null) animator.enabled = false;
+        bool origFlip = spriteRenderer != null && spriteRenderer.flipX;
+        float faceDir = origFlip ? -1f : 1f;
+
+        if (wanjianSprites != null && wanjianSprites.Length >= 16 && wanjianSprites[0] != null)
+        {
+            // 阶段一：起势·踏空引天 (F1 ~ F4)
+            float[] startupDurations = new float[] { 0.08f, 0.08f, 0.08f, 0.08f };
+            for (int i = 0; i < 4; i++)
+            {
+                if (spriteRenderer != null) spriteRenderer.sprite = wanjianSprites[i];
+                yield return new WaitForSeconds(startupDurations[i]);
+            }
+
+            // 阶段二：覆掌与暴雨贯地 (F5 ~ F8)
+            float[] barrageDurations = new float[] { 0.08f, 0.08f, 0.08f, 0.08f };
+            for (int i = 4; i < 8; i++)
+            {
+                if (spriteRenderer != null) spriteRenderer.sprite = wanjianSprites[i];
+                StartCoroutine(SpawnFallingSwordRain(false, 4, faceDir));
+                PokongciBloomFX.Instance.TriggerCameraShake(0.14f, 0.06f);
+                yield return new WaitForSeconds(barrageDurations[i - 4]);
+            }
+
+            // 阶段三：剑阵插地与太虚大爆破 (F9 ~ F12)
+            if (spriteRenderer != null) spriteRenderer.sprite = wanjianSprites[8]; // F9 肃杀静止
+            yield return new WaitForSeconds(0.10f);
+
+            if (spriteRenderer != null) spriteRenderer.sprite = wanjianSprites[9]; // F10 晶核共鸣
+            yield return new WaitForSeconds(0.08f);
+
+            if (spriteRenderer != null) spriteRenderer.sprite = wanjianSprites[10]; // F11 临界超载 (时空顿帧)
+            Time.timeScale = 0.25f;
+            yield return new WaitForSecondsRealtime(0.08f);
+            Time.timeScale = 1.0f;
+
+            if (spriteRenderer != null) spriteRenderer.sprite = wanjianSprites[11]; // F12 漫天爆灭
+            PokongciBloomFX.Instance.TriggerCameraShake(0.35f, 0.16f);
+            yield return new WaitForSeconds(0.10f);
+
+            // 阶段四：星屑沉降与拂袖入鞘 (F13 ~ F16)
+            float[] recoveryDurations = new float[] { 0.08f, 0.08f, 0.10f, 0.14f };
+            for (int i = 12; i < 16; i++)
+            {
+                if (spriteRenderer != null) spriteRenderer.sprite = wanjianSprites[i];
+                yield return new WaitForSeconds(recoveryDurations[i - 12]);
+            }
+        }
+        else
+        {
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.flipX = origFlip;
+            spriteRenderer.color = Color.white;
+        }
+
+        if (animator != null) animator.enabled = true;
+        isSkillPlaying = false;
+        currentActionName = "待机 (Idle)";
+    }
+
+    IEnumerator WanjianBloomRoutine()
+    {
+        isSkillPlaying = true;
+        currentActionName = "【剑意绽放·终极绝学】万剑归宗·极 · 太虚绝仙剑界 (QF-6E)";
+        swordIntent = 0; // 消耗 5 阶满额剑意
+
+        if (wanjianBloomSprites == null || wanjianBloomSprites.Length < 16 || wanjianBloomSprites[0] == null)
+        {
+            LoadWanjianBloomSprites();
+        }
+        if (fallingSwordBloom45Sprite == null) LoadWanjianProjectiles();
+
+        if (animator != null) animator.enabled = false;
+        bool origFlip = spriteRenderer != null && spriteRenderer.flipX;
+        float faceDir = origFlip ? -1f : 1f;
+
+        if (wanjianBloomSprites != null && wanjianBloomSprites.Length >= 16 && wanjianBloomSprites[0] != null)
+        {
+            if (spriteRenderer != null) spriteRenderer.color = new Color(0.85f, 1f, 1f, 1f);
+
+            // 阶段一：六翼初展与太虚天门 (F1 ~ F4)
+            float[] startupDurations = new float[] { 0.09f, 0.09f, 0.10f, 0.12f };
+            for (int i = 0; i < 3; i++)
+            {
+                if (spriteRenderer != null) spriteRenderer.sprite = wanjianBloomSprites[i];
+                yield return new WaitForSeconds(startupDurations[i]);
+            }
+
+            // F4 神目锁界 · 0.15s 绝对时空停顿
+            if (spriteRenderer != null) spriteRenderer.sprite = wanjianBloomSprites[3];
+            Time.timeScale = 0.15f;
+            PokongciBloomFX.Instance.TriggerCameraShake(0.20f, 0.08f);
+            yield return new WaitForSecondsRealtime(0.12f);
+            Time.timeScale = 1.0f;
+
+            // 阶段二：神陨圣裁与巍峨玄峰 (F5 ~ F8)
+            float[] barrageDurations = new float[] { 0.08f, 0.08f, 0.08f, 0.08f };
+            for (int i = 4; i < 8; i++)
+            {
+                if (spriteRenderer != null) spriteRenderer.sprite = wanjianBloomSprites[i];
+                StartCoroutine(SpawnFallingSwordRain(true, 6, faceDir));
+                PokongciBloomFX.Instance.TriggerCameraShake(0.25f, 0.10f);
+                yield return new WaitForSeconds(barrageDurations[i - 4]);
+            }
+
+            // 阶段三：引力黑洞坍缩与太虚十字大核爆 (F9 ~ F12)
+            if (spriteRenderer != null) spriteRenderer.sprite = wanjianBloomSprites[8]; // F9 虚空黑洞
+            yield return new WaitForSeconds(0.10f);
+
+            if (spriteRenderer != null) spriteRenderer.sprite = wanjianBloomSprites[9]; // F10 临界逆转 + 巨大太虚主剑轰顶贯穿
+            StartCoroutine(SpawnGrandDivineSword(faceDir));
+            yield return new WaitForSeconds(0.08f);
+
+            if (spriteRenderer != null) spriteRenderer.sprite = wanjianBloomSprites[10]; // F11 十字圣爆
+            PokongciBloomFX.Instance.TriggerCameraShake(0.60f, 0.28f);
+            Time.timeScale = 0.20f;
+            yield return new WaitForSecondsRealtime(0.15f);
+            Time.timeScale = 1.0f;
+
+            if (spriteRenderer != null) spriteRenderer.sprite = wanjianBloomSprites[11]; // F12 双重音速激波
+            yield return new WaitForSeconds(0.10f);
+
+            // 阶段四：剑仙真身与踏莲入鞘 (F13 ~ F16)
+            float[] recoveryDurations = new float[] { 0.09f, 0.09f, 0.10f, 0.16f };
+            for (int i = 12; i < 16; i++)
+            {
+                if (spriteRenderer != null) spriteRenderer.sprite = wanjianBloomSprites[i];
+                yield return new WaitForSeconds(recoveryDurations[i - 12]);
+            }
+        }
+        else
+        {
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.flipX = origFlip;
+            spriteRenderer.color = Color.white;
+        }
+
+        if (animator != null) animator.enabled = true;
+        isSkillPlaying = false;
+        currentActionName = "待机 (Idle)";
+    }
+
+    IEnumerator SpawnFallingSwordRain(bool isBloom, int count, float faceDir)
+    {
+        Sprite swordSp = isBloom ? fallingSwordBloom45Sprite : fallingSwordNormal45Sprite;
+        if (swordSp == null) yield break;
+
+        for (int i = 0; i < count; i++)
+        {
+            StartCoroutine(SpawnSingleFallingSword(isBloom, swordSp, faceDir, i));
+        }
+    }
+
+    IEnumerator SpawnSingleFallingSword(bool isBloom, Sprite swordSp, float faceDir, int swordIndex)
+    {
+        if (swordSp == null) yield break;
+
+        // 微时间差错开生成，形成如狂风骤雨般连绵不绝的密布飞剑暴雨
+        if (swordIndex > 0)
+        {
+            yield return new WaitForSeconds(Random.Range(0.015f, 0.045f) * swordIndex);
+        }
+
+        Vector3 startPos;
+        Vector3 targetPos;
+
+        if (!isBloom)
+        {
+            // === 常态万剑归宗 (QF-6)：前向 45°~60° 斜角破空呼啸飞剑 (Slanted Forward Meteor Barrage) ===
+            // 飞剑从角色后上方/九天云阙呼啸破空，以 45°~60° 凌厉斜角猛烈插向角色面朝的前方战区
+            float targetDistAhead = Random.Range(1.2f, 7.2f);
+            float targetX = transform.position.x + targetDistAhead * faceDir;
+            float skyY = Random.Range(5.2f, 7.5f);
+            // 倾角：X 坐标往后方 (反方向) 偏移 3.2m ~ 4.8m，形成气势磅礴的斜向俯冲势
+            float slantX = Random.Range(3.2f, 4.8f) * faceDir;
+
+            startPos = new Vector3(targetX - slantX, transform.position.y + skyY, 0f);
+            targetPos = new Vector3(targetX, groundY, 0f);
+        }
+        else
+        {
+            // === 剑意绽放·极 (QF-6E)：太虚绝仙剑界 · 天穹环形聚拢阵 (Celestial Convergence Dome) ===
+            // 完美还原图三概念图：九天雷云八卦剑门，飞剑呈天穹穹顶扇形向前方战场核心聚拢穿插
+            float targetDistAhead = Random.Range(0.8f, 7.5f);
+            float targetX = transform.position.x + targetDistAhead * faceDir;
+
+            // 天穹阵列宽幅覆盖 [-6m, +7.5m]
+            float skySpread = Random.Range(-5.5f, 7.5f) * faceDir;
+            float skyY = Random.Range(5.5f, 8.2f);
+            startPos = new Vector3(transform.position.x + skySpread, transform.position.y + skyY, 0f);
+            targetPos = new Vector3(targetX, groundY, 0f);
+        }
+
+        Vector3 travelDir = (targetPos - startPos).normalized;
+        // 计算飞行方向角 (度数)
+        float travelAngle = Mathf.Atan2(travelDir.y, travelDir.x) * Mathf.Rad2Deg;
+        // 原生精灵素材剑尖朝正下方 (-90度)，旋转角为 travelAngle + 90
+        Quaternion swordRotation = Quaternion.Euler(0f, 0f, travelAngle + 90f);
+
+        GameObject swordObj = new GameObject("FallingSword_FX");
+        swordObj.transform.position = startPos;
+        swordObj.transform.rotation = swordRotation;
+
+        SpriteRenderer sr = swordObj.AddComponent<SpriteRenderer>();
+        sr.sprite = swordSp;
+        sr.sortingOrder = 10;
+
+        float scaleFactor = isBloom ? Random.Range(0.38f, 0.46f) : Random.Range(0.30f, 0.38f);
+        swordObj.transform.localScale = new Vector3(scaleFactor, scaleFactor, 1f);
+
+        if (isBloom)
+        {
+            sr.color = new Color(1f, 0.96f, 0.75f, 1f);
+        }
+
+        // 高速贯空 (24 ~ 35 m/s)
+        float speed = isBloom ? Random.Range(28f, 38f) : Random.Range(22f, 30f);
+        float totalDist = Vector3.Distance(startPos, targetPos);
+        float duration = totalDist / speed;
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            if (swordObj != null)
+            {
+                swordObj.transform.position = Vector3.Lerp(startPos, targetPos, t);
+            }
+            yield return null;
+        }
+
+        // 贯穿入地阶段：剑尖钉入地面，保持冲击斜角微震
+        if (swordObj != null)
+        {
+            swordObj.transform.position = targetPos;
+            PokongciBloomFX.Instance.TriggerCameraShake(isBloom ? 0.08f : 0.04f, 0.04f);
+
+            // 剑尖入石微颤 0.18s ~ 0.28s
+            float stickDuration = Random.Range(0.18f, 0.28f);
+            float stickElapsed = 0f;
+            Vector3 stickBase = targetPos;
+            while (stickElapsed < stickDuration && swordObj != null)
+            {
+                stickElapsed += Time.deltaTime;
+                float jitter = Mathf.Sin(stickElapsed * 60f) * 0.02f;
+                swordObj.transform.position = stickBase + new Vector3(jitter, jitter * 0.5f, 0f);
+                yield return null;
+            }
+
+            // 剑气消散渐隐 0.20s
+            float fadeDuration = 0.20f;
+            float fadeElapsed = 0f;
+            while (fadeElapsed < fadeDuration && swordObj != null)
+            {
+                fadeElapsed += Time.deltaTime;
+                if (sr != null)
+                {
+                    Color c = sr.color;
+                    c.a = 1.0f - (fadeElapsed / fadeDuration);
+                    sr.color = c;
+                }
+                yield return null;
+            }
+            Destroy(swordObj);
+        }
+    }
+
+    IEnumerator SpawnGrandDivineSword(float faceDir)
+    {
+        Sprite swordSp = fallingSwordBloom45Sprite;
+        if (swordSp == null) yield break;
+
+        Vector3 targetPos = new Vector3(transform.position.x + 3.2f * faceDir, groundY, 0f);
+        Vector3 startPos = new Vector3(targetPos.x - 2.2f * faceDir, transform.position.y + 8.5f, 0f);
+
+        Vector3 travelDir = (targetPos - startPos).normalized;
+        float travelAngle = Mathf.Atan2(travelDir.y, travelDir.x) * Mathf.Rad2Deg;
+        Quaternion swordRotation = Quaternion.Euler(0f, 0f, travelAngle + 90f);
+
+        GameObject giantSword = new GameObject("GrandDivineSword_FX");
+        giantSword.transform.position = startPos;
+        giantSword.transform.rotation = swordRotation;
+        giantSword.transform.localScale = new Vector3(0.95f, 0.95f, 1f); // 巨大主剑
+
+        SpriteRenderer sr = giantSword.AddComponent<SpriteRenderer>();
+        sr.sprite = swordSp;
+        sr.sortingOrder = 12;
+        sr.color = new Color(1f, 1f, 0.85f, 1f);
+
+        float speed = 36f;
+        float dur = Vector3.Distance(startPos, targetPos) / speed;
+        float el = 0f;
+        while (el < dur && giantSword != null)
+        {
+            el += Time.deltaTime;
+            giantSword.transform.position = Vector3.Lerp(startPos, targetPos, el / dur);
+            yield return null;
+        }
+
+        if (giantSword != null)
+        {
+            giantSword.transform.position = targetPos;
+            PokongciBloomFX.Instance.TriggerCameraShake(0.55f, 0.25f);
+
+            yield return new WaitForSeconds(0.35f);
+
+            float fade = 0.25f;
+            while (fade > 0f && giantSword != null)
+            {
+                fade -= Time.deltaTime;
+                if (sr != null)
+                {
+                    Color c = sr.color;
+                    c.a = fade / 0.25f;
+                    sr.color = c;
+                }
+                yield return null;
+            }
+            Destroy(giantSword);
+        }
+    }
+
+    private Vector2 guiScrollPos = Vector2.zero;
+
     void OnGUI()
     {
         // 仅在独立预览模式下绘制操控面板
         if (combat != null) return;
 
-        GUILayout.BeginArea(new Rect(20, 20, 450, 720), GUI.skin.box);
+        float panelHeight = Mathf.Min(Screen.height - 20, 880);
+        GUILayout.BeginArea(new Rect(15, 10, 480, panelHeight), GUI.skin.box);
+        guiScrollPos = GUILayout.BeginScrollView(guiScrollPos);
+
         GUILayout.Label("<b><size=15>【刀影江湖 · 青锋动作与技能预览台】</size></b>");
         GUILayout.Space(4);
         GUILayout.Label($"<b>当前动作：</b><color=#00ff88>{currentActionName}</color>");
@@ -2265,7 +2800,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.Space(6);
-        GUILayout.Label("<b>--- 技能4：引剑诀 · 流光溯影 / 极·万剑归宗 (天外飞剑贯通归鞘 R/P) ---</b>");
+        GUILayout.Label("<b>--- 技能4：引剑诀 · 流光溯影 (天外飞剑贯通归鞘 R/P) ---</b>");
         GUILayout.BeginHorizontal();
         GUI.color = new Color(0.2f, 1f, 0.85f);
         if (GUILayout.Button("常态引剑诀 (飞剑贯通+强力合刃)", GUILayout.Height(30)))
@@ -2277,7 +2812,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             StartCoroutine(YinjianjueRoutine());
         }
         GUI.color = new Color(1f, 0.85f, 0.2f);
-        if (GUILayout.Button("★ 极·万剑归宗 (混元归渊·冰破乾坤)", GUILayout.Height(30)))
+        if (GUILayout.Button("★ 极·引剑诀 (混元归渊·冰破乾坤)", GUILayout.Height(30)))
         {
             TriggerYinjianjueBloom();
         }
@@ -2297,7 +2832,7 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             GUI.color = new Color(0.35f, 1f, 0.85f);
             float currentAbsorbed = isYuqiBloomShieldActive ? yuqiBloomAbsorbedDamage : yuqiAbsorbedDamage;
             float currentMax = isYuqiBloomShieldActive ? maxYuqiBloomShield : maxYuqiShield;
-            if (GUILayout.Button($"模拟吸收受击 (+25) [{Mathf.RoundToInt(currentAbsorbed)}/{Mathf.RoundToInt(currentMax)}]", GUILayout.Height(30)))
+            if (GUILayout.Button($"模拟受击 (+25) [{Mathf.RoundToInt(currentAbsorbed)}/{Mathf.RoundToInt(currentMax)}]", GUILayout.Height(30)))
             {
                 AbsorbYuqiHit(25f, isYuqiBloomShieldActive);
             }
@@ -2318,6 +2853,22 @@ public class PlayerSpriteLocomotion : MonoBehaviour
             {
                 TriggerYijianyuqiBloom(true);
             }
+        }
+        GUI.color = Color.white;
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(6);
+        GUILayout.Label("<b>--- 技能6：万剑归宗 · 终极绝学 (全屏飞剑暴雨倾天 / 太虚绝仙剑界 Y/V) ---</b>");
+        GUILayout.BeginHorizontal();
+        GUI.color = new Color(0.2f, 0.95f, 1f);
+        if (GUILayout.Button("常态万剑归宗 (36柄流星剑雨+超新星爆 Y)", GUILayout.Height(30)))
+        {
+            TriggerWanjian();
+        }
+        GUI.color = new Color(1f, 0.85f, 0.1f);
+        if (GUILayout.Button("★ 极·万剑归宗 (太虚天门+冰魄玄峰+时停大核爆 V)", GUILayout.Height(30)))
+        {
+            TriggerWanjianBloom();
         }
         GUI.color = Color.white;
         GUILayout.EndHorizontal();
@@ -2349,7 +2900,9 @@ public class PlayerSpriteLocomotion : MonoBehaviour
 
         GUILayout.Space(6);
         GUILayout.Label("<color=#cccccc><size=11>按键提示：长按 F 维持格挡（随时间衰减）；长按 G 或 Shift+F 维持以剑御气（无时间衰减，全额吸收伤害，松手或超限释放反震）\n" +
-                        "按 H 模拟受击 | 按 T 完美弹反 | Space 闪避 | J 轻击三连 | K 重刺 | Q/U 破空刺 | E/O 回风舞 | I 霜寒 | R/P 引剑</size></color>");
+                        "按 H 模拟受击 | 按 T 完美弹反 | Space 闪避 | J 轻击三连 | K 重刺 | Q/U 破空刺 | E/O 回风舞 | I 霜寒 | R/P 引剑 | Y/V 万剑归宗</size></color>");
+
+        GUILayout.EndScrollView();
         GUILayout.EndArea();
     }
 }
